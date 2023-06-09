@@ -1,0 +1,240 @@
+#!/usr/bin/env -S context --result=noto-emoji --once --debug
+
+-- Constants
+local bp_to_sp <const> = tex.sp("1bp") * 0.93
+local scale <const> = tex.sp("10pt") / tex.sp("1bp") / 128
+local dest_formatter <const> =
+    string.formatters["<< /D [ %i 0 R /XYZ 0 0 null ] >>"]
+
+-- Generic utility functions
+
+--- Extracts an upvalue from a function.
+---
+--- @param func function
+--- @param name string The name of the upvalue
+--- @return any - The upvalue
+local function get_upvalue(func, name)
+    local nups <const> = debug.getinfo(func).nups
+
+    for i = 1, nups do
+        local current <const>, value <const> = debug.getupvalue(func, i)
+        if current == name then
+            return value
+        end
+    end
+end
+
+--- { { "a", "b" } } --> 1, "a", "b"
+local function unpacked_next(t, i)
+    local n, v = next(t, i)
+    if type(v) == "table" then
+        return n, table.unpack(v)
+    elseif n then
+        return n, n, v
+    end
+end
+
+--- Returns the average of a table of numbers.
+local function average(t)
+    local sum = 0
+    for _, v in ipairs(t) do
+        sum = sum + v
+    end
+    return sum / #t
+end
+
+-- pdfLaTeX uses PDF v1.5 by default, but ConTeXt uses v1.7. Let's force
+-- v1.5 here to be safe.
+lpdf.formats.data.emoji = table.copy(lpdf.formats.default)
+lpdf.formats.data.emoji.pdf_version = 1.5
+context.setupbackend { format = "emoji" }
+
+-- Register the dropin method "rawpdf" to allow us to inject raw PDF code
+-- as the contents of a Type 3 glyph.
+if not lpdf.registerfontmethod then
+    error('Please uncomment "lpdf.registerfontmethod" in "lpdf-emb.lmt"!')
+end
+
+lpdf.registerfontmethod("rawpdf", function(filename, details)
+    return
+        details.properties.indexdata[1],
+        scale,
+        function(char)
+            return char.code, char.width / bp_to_sp
+        end,
+        function() end,
+        function() end
+end)
+
+--- Add the provided glyph to the current font.
+---
+--- @param codepoint integer
+--- @param width number
+--- @param height number
+--- @param code string
+local function make_glyph(codepoint, width, height, code)
+    local spec <const> = {
+        width   = width,
+        height  = height,
+        depth   = 0,
+        unicode = codepoint,
+        code = code,
+    }
+    local tfmdata <const> = fonts.hashes.identifiers[font.current()]
+
+    tfmdata.characters[codepoint] = spec
+    fonts.dropins.swapone(
+        "rawpdf",
+        tfmdata,
+        { code = spec },
+        codepoint
+    )
+    fonts.constructors.addcharacters(
+        font.current(),
+        { characters = { [codepoint] = spec } }
+    )
+end
+
+-- Metafun wants to use transparencies and gradients when drawing SVGs;
+-- however, these add extra objects to the PDF file. For a few hundred
+-- glyphs, this wouldn't be a big deal; but for a few thousand, this makes
+-- loading the PDF file quite slow. We use this questionable hack to remove
+-- any of these unwanted effects.
+utilities.sequencers.prependaction(
+    get_upvalue(metapost.installplugin, "processoractions"),
+    "system",
+    function(object, prescript, before, after)
+        local saved <const> = {}
+        for pos, name, value in unpacked_next,prescript do
+            if name:match("^tr_") then -- transparencies
+                saved[name] = value
+                prescript[pos] = nil
+            elseif name:match("^sh_") then -- gradients
+                saved[name] = value
+                prescript[pos] = nil
+            end
+        end
+
+        if tonumber(saved.tr_transparency) and
+           tonumber(saved.tr_transparency) < 0.30
+        then -- "delete" objects with opacity < 30%
+            before[1] = "\n%"
+            after[2] = "\n"
+        elseif saved.sh_type then -- replace gradients with their average color
+            local rs <const> = {}
+            local gs <const> = {}
+            local bs <const> = {}
+
+            for name, value in pairs(saved) do
+                if name:match("^sh_color_[ab]_") then
+                    local r, g, b = value:match("(.*):(.*):(.*)")
+                    rs[#rs+1] = r
+                    gs[#gs+1] = g
+                    bs[#bs+1] = b
+                end
+            end
+
+            local values <const> = string.format(
+                "%0.2f %0.2f %0.2f",
+                average(rs), average(gs), average(bs)
+            )
+            before[2] = string.format("%s RG %s rg", values, values)
+        end
+    end
+)
+
+-- Add "named destinations" for each page with the glyph name/codepoint.
+local pageno = 0
+
+local dests <const> = table.setmetatableindex(function(t, k)
+    local v = lpdf.delayedobject(dest_formatter(lpdf.pagereference(k)))
+    t[k] = v
+    return v
+end)
+
+local function make_name(name)
+    lpdf.registerdestination("emoji" .. name, dests[pageno])
+end
+
+local chars <const> = {}
+
+--- Process each SVG file.
+local function process(name)
+    if file.extname(name) ~= "svg" then -- uh oh
+        return
+    end
+
+    local char <const> = file.nameonly(name):match("u(%x+)")
+    local codepoint <const> = tonumber("0x" .. char)
+
+    if chars[char] then -- Ignore duplicates
+        return
+    else
+        chars[char] = true
+    end
+
+    local contents <const> = select(2, resolvers.loadbinfile(name))
+
+    -- Convert the SVG to Metafun
+    local mp_code = metapost.svgtomp { data = contents }
+    -- Scale and shift the Metafun image
+    mp_code = mp_code
+        :gsub("clip currentpicture.-;", "")
+        :gsub("^draw ", "picture p; p :=")
+        :gsub(";%s*$", "; p := p shifted -llcorner p; draw p scaled " .. scale .. ";")
+
+    -- Render the Metafun image to PDF
+    local pdf_code, width, height = metapost.simple(
+        "metafun",
+        mp_code,
+        true,
+        false,
+        "svg"
+    )
+
+    -- Clean up the PDF code
+    pdf_code = pdf_code
+        :gsub("^q ", "")
+        :gsub(" Q$", "")
+        :gsub("(%d%.%d%d)%d%d%d", "%1")
+        :gsub("(%d%.%d%d)%d%d", "%1")
+        :gsub("(%d%.%d%d)%d", "%1")
+
+    -- Add the glyph to the font
+    make_glyph(
+        codepoint,
+        width * bp_to_sp,
+        height * bp_to_sp,
+        pdf_code
+    )
+
+    -- Add the destinations
+    pageno = pageno + 1
+    make_name(char)
+    make_name(codepoint)
+    make_name(characters.data[codepoint].description:lower())
+
+    -- Add the glyph to the document
+    context.startTEXpage()
+    context.verbatim(utf8.char(codepoint))
+    context.stopTEXpage()
+end
+
+-- Compress and linearize the PDF when we're done
+luatex.wrapup(function()
+    os.execute(
+        "qpdf --verbose --linearize --compress-streams=y --recompress-flate --compression-level=9 --object-streams=generate --remove-unreferenced-resources=yes --replace-input " ..
+        file.replacesuffix(environment.jobname, "pdf")
+    )
+end)
+
+context.starttext()
+context.stepwise(function()
+    -- process("/home/max/Downloads/noto-svg/emoji_u1faf0.svg")
+    -- process("/home/max/Downloads/noto-svg/emoji_u1f986.svg")
+    -- process("/home/max/Downloads/noto-svg/emoji_u1f391.svg")
+
+    -- Process each SVG file in the input directory
+    dir.globpattern(document.getargument("in"), "**.svg", false, process)
+end)
+context.stoptext()

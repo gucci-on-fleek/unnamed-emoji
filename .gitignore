@@ -1,0 +1,6 @@
+*.aux
+*.log
+*.pdf
+*.qdf
+*.tuc
+temp*
