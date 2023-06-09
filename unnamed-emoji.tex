@@ -1,0 +1,35 @@
+\wlog{unnamed-emoji v0.0.1} %%version
+
+\catcode`@=11
+
+\ifdefined\directlua
+    \input ltluatex
+    \directlua{require "unnamed-emoji"}
+\fi
+
+\ifdefined\pdftexversion
+    \def\unemoji@print#1#2{%
+        \ifcsname emoji@#2\endcsname%
+            \pdfrefximage\csname emoji@#2\endcsname\relax%
+        \else%
+            \pdfximage named{emoji#2}{#1}%
+            \expandafter\chardef\csname emoji@#2\endcsname=\pdflastximage\relax%
+            \pdfrefximage\pdflastximage\relax%
+        \fi%
+    }
+\fi
+
+\ifx\unemoji@print\undefined
+    \errmessage{%
+        LuaTeX or pdfTeX is REQUIRED!%
+    }
+\fi
+
+\def\emojifont{noto-emoji.pdf}
+
+\def\emoji#1{%
+    \unemoji@print{\emojifont}{#1}%
+}
+
+\catcode`@=12
+\endinput

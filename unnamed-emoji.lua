@@ -15,7 +15,12 @@ end
 --- @return nil
 local function register_tex_cmd(name, func, args)
     local scanning_func
-    name = "__unemoji_" .. name .. ":" .. string.rep("n", #args)
+
+    if tex.formatname:find("latex") then
+        name = "__unemoji_" .. name .. ":" .. string.rep("n", #args)
+    else
+        name = "unemoji@" .. name
+    end
 
     local scanners = {}
     for _, arg in ipairs(args) do
