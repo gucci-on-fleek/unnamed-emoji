@@ -16,26 +16,44 @@
 \prop_new:N \g__unemoji_used_prop
 \seq_new:N \g__unemoji_used_seq
 
-% Loads an emoji
-\cs_new_protected:Nn \__unemoji_load:nn {
-    \pdfximage named { emoji #2 } { #1 }
-    \prop_put:NnV \g__unemoji_used_prop { #2 } \pdflastximage
+% pdfTeX
+\sys_if_engine_pdftex:T {
+    % Loads an emoji
+    \cs_new_protected:Nn \__unemoji_load:nn {
+        \pdfximage named { emoji #2 } { #1 }
+        \prop_put:NnV \g__unemoji_used_prop { #2 } \pdflastximage
+    }
+
+    % Prints an emoji
+    \cs_new_protected:Nn \__unemoji_print:nn {
+        \prop_get:NnNTF \g__unemoji_used_prop { #2 } \l_tmpa_tl {
+            \pdfrefximage \l_tmpa_tl \scan_stop:
+        }{
+            \__unemoji_load:nn { #1 } { #2 }
+            \pdfrefximage \pdflastximage \scan_stop:
+            \seq_gput_right:Nn \g__unemoji_used_seq { #2 }
+        }
+    }
 }
 
-% Prints an emoji
-\cs_new_protected:Nn \__unemoji_emoji:nn {
-    \prop_get:NnNTF \g__unemoji_used_prop { #2 } \l_tmpa_tl {
-        \pdfrefximage \l_tmpa_tl \scan_stop:
-    }{
-        \__unemoji_load:nn { #1 } { #2 }
-        \pdfrefximage \pdflastximage \scan_stop:
-        \seq_gput_right:Nn \g__unemoji_used_seq { #2 }
-    }
+% LuaTeX
+\sys_if_engine_luatex:T {
+    \lua_load_module:n { unnamed-emoji }
+}
+
+% Bad engine
+\cs_if_exist:NF \__unemoji_print:nn {
+    \msg_new:nnn
+        { unnamed-emoji }
+        { bad-engine }
+        { LuaTeX~ or~ pdfTeX~ is~ REQUIRED! }
+
+    \msg_critical:nn { unnamed-emoji } { bad-engine }
 }
 
 % Public interface
 \NewDocumentCommand { \emoji } { O{noto-emoji.pdf} m } {
-    \__unemoji_emoji:nn { #1 } { #2 }
+    \__unemoji_print:nn { #1 } { #2 }
 }
 
 % Save the list of used emojis to the aux file

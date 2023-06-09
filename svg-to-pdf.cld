@@ -4,7 +4,7 @@
 local bp_to_sp <const> = tex.sp("1bp") * 0.93
 local scale <const> = tex.sp("10pt") / tex.sp("1bp") / 128
 local dest_formatter <const> =
-    string.formatters["<< /D [ %i 0 R /XYZ 0 0 null ] >>"]
+    string.formatters["<< /D [ %i 0 R /XYZ %i 0 null ] >>"]
 
 -- Generic utility functions
 
@@ -147,7 +147,7 @@ utilities.sequencers.prependaction(
 local pageno = 0
 
 local dests <const> = table.setmetatableindex(function(t, k)
-    local v = lpdf.delayedobject(dest_formatter(lpdf.pagereference(k)))
+    local v = lpdf.delayedobject(dest_formatter(lpdf.pagereference(k), k))
     t[k] = v
     return v
 end)
