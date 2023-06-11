@@ -202,7 +202,7 @@ local chars = memoized_table(function(filename)
                 inner_fontname = fontname,
                 inner_slot = slot,
                 char_obj = font.CharProcs["I" .. slot],
-                width = font.Widths[slot],
+                width = font.Widths[slot + 1],
                 codepoint = tonumber(name),
             }
 

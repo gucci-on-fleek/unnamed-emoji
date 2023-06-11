@@ -132,9 +132,9 @@ utilities.sequencers.prependaction(
             for name, value in pairs(saved) do
                 if name:match("^sh_color_[ab]_") then
                     local r, g, b = value:match("(.*):(.*):(.*)")
-                    rs[#rs+1] = r
-                    gs[#gs+1] = g
-                    bs[#bs+1] = b
+                    rs[#rs+1] = r or value
+                    gs[#gs+1] = g or value
+                    bs[#bs+1] = b or value
                 end
             end
 
