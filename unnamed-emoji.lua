@@ -1,13 +1,27 @@
--- Define some utility functions
+-- Save some globals
 local array = pdfe.arraytotable
 local dict = pdfe.dictionarytotable
-local pairs = pairs
-
-local function ref(ref)
-    return select(2, pdfe.getfromreference(ref[2]))
-end
-
+local getfromdictionary = pdfe.getfromdictionary
+local getfromreference = pdfe.getfromreference
 local l_type = type
+local pairs = pairs
+local rawget = rawget
+local rawset = rawset
+local select = select
+local tonumber = tonumber
+local unpack = table.unpack
+local yield = coroutine.yield
+
+-- Define some numerical constants
+local height = tex.sp("10bp")
+local bp_to_sp = tex.sp("1bp")
+
+-- General-purpose utility functions
+
+--- A variant of `type` that also works on userdata.
+---
+--- @param val any
+--- @return string - The type of the value
 local function type(val)
     local meta = getmetatable(val)
     if meta and meta.__name then
@@ -17,9 +31,27 @@ local function type(val)
     end
 end
 
+
+--- Memoizes a function call/table index.
+---
+--- @param func function<any, any> The function to memoize
+--- @return table
+local function memoized_table(func)
+    return setmetatable({}, { __index = function(cache, key)
+        local ret = func(key, cache)
+        cache[key] = ret
+        return ret
+    end,  __call = function(self, arg)
+        return self[arg]
+    end })
+end
+
+
+-- Specialized utility functions
+
 --- Creates a TeX command that evaluates a Lua function
 ---
---- @param name string The name of the csname to define
+--- @param name string The name of the \csname to define
 --- @param func function
 --- @param args table<string> The TeX types of the function arguments
 --- @return nil
@@ -53,164 +85,232 @@ local function register_tex_cmd(name, func, args)
     token.set_lua(name, index)
 end
 
--- Define the main font loading command
-local fonts = setmetatable({}, { __index = function(fonts, filename)
-    local doc = pdfe.open(filename)
-    local internal = {}
 
-    for number, page in pairs(doc.Pages) do
-        local name, reference = next(dict(page.Resources.Font))
-        internal[name] = {
-            dict(ref(dict(ref(reference)).CharProcs)),
-            array(ref(dict(ref(reference)).Widths)),
-        }
+--- Iterator for a PDF array/dictionary.
+---
+--- @param array luatex.pdfe.array|luatex.pdfe.dictionary
+--- @return function iterator `{index: integer, value: any}`
+local function array_pairs(array)
+    local len = #array
+    return function(state, index)
+        if not index then
+            index = 1
+        elseif index >= len then
+            return
+        else
+            index = index + 1
+        end
+
+        return index, array[index]
     end
+end
 
-    local font = setmetatable({ __internal = internal }, { __index = function(used_fonts, packed)
-        local name, char = table.unpack(packed)
-        local char_procs, widths = table.unpack(internal[name])
 
-        local char_ref = pdf.immediateobj(
-            "stream",
-            pdfe.readwholestream(ref(char_procs["I" .. char]), true) .. ""
-        )
-
-        local ret = { char_ref, widths[tonumber(char)][2] }
-        used_fonts[packed] = ret
-        return ret
-    end })
-
-    fonts[filename] = font
-    return font
-end })
-
-local chars = setmetatable({}, { __index = function(chars, filename)
-    local font = {}
-    local doc = pdfe.open(filename)
-
-    local t = array(doc.Catalog.Names.Dests.Kids)
-
-    for _, v in pairs(t) do
-        local tt = array(ref(v).Kids)
-        for _, vv in pairs(tt) do
-            local ttt = array(dict(ref(vv)).Names[2])
-            local key = ""
-            for _, vvv in pairs(ttt) do
-                if type(vvv[2]) == "string" then
-                    key = vvv[2]:match("emoji(.*)$")
-                else
-                    local char = {}
-                    local page = ref(array(dict(ref(vvv)).D[2])[1])
-                    char[1] = next(dict(page.Resources.Font))
-                    char[2] = tonumber(
-                        pdfe.readwholestream(page.Contents, true)
-                            :match("<(..)>"),
-                        16
-                    )
-
-                    font[key] = char
+--- Iterator over all named destinations in a PDF document.
+---
+--- @param document luatex.pdfe.dictionary The root of a PDF document
+--- @return function iterator `{name: string, dest: luatex.pdfe.dictionary}`
+local function get_dests(document)
+    return coroutine.wrap(function()
+        for i, dests in array_pairs(document.Catalog.Names.Dests.Kids) do
+            for i, dests in array_pairs(dests.Kids) do
+                local char_name = ""
+                for _, dest in array_pairs(dests.Names) do
+                    if type(dest) == "string" then
+                        char_name = dest:match("emoji(.*)$")
+                    else
+                        yield(char_name, dest)
+                    end
                 end
             end
         end
+    end)
+end
+
+
+-- Font/PDF processing
+
+local fonts = {}
+--- Makes the low-level Type 3 fonts from the provided characters.
+---
+--- @param pdf_name string The name of the PDF file
+--- @param characters table A mapping of characters
+local function make_fonts(pdf_name, characters)
+    pdf.setgentounicode(1)
+
+    for fontname, characters in pairs(characters) do
+        local define_chars = {}
+        for slot, char in pairs(characters) do
+            define_chars[slot] = {
+                width = char.width * bp_to_sp,
+                height = height,
+                depth = 0,
+                tounicode = char.codepoint,
+            }
+        end
+
+        local id = font.define {
+            name = ("unemoji-%s-%s"):format(pdf_name, fontname),
+            parameters = {},
+            properties = {},
+            characters = define_chars,
+            encodingbytes = 0,
+            psname = "none",
+        }
+
+        fonts[id] = characters
+        fonts[pdf_name] = fonts[pdf_name] or {}
+        fonts[pdf_name][fontname] = id
+    end
+end
+
+
+--- Gets a character's data from its name and PDF file.
+---
+--- @param filename string The name of the PDF file
+--- @param char string|integer|nil The name/codepoint of the character
+--- @return table - The character's data
+local chars = memoized_table(function(filename)
+    local pdf_font = {}
+    local by_font = {}
+    local dests = {}
+    local document = pdfe.open(filename)
+
+    for name, dest in get_dests(document) do
+        local dest_key = tostring(dest)
+        local prev_dest = dests[dest_key]
+        if prev_dest then
+            if tonumber(name) then
+                prev_dest.codepoint = tonumber(name)
+            end
+            pdf_font[name] = prev_dest
+        else
+            local page = dest.D[1]
+            local fontname, _, font = getfromdictionary(
+                page.Resources.Font,
+                1
+            )
+            font = select(2, getfromreference(font))
+            local slot = tonumber(page.Contents(true):match("<(..)>"), 16)
+
+            local char = {
+                inner_fontname = fontname,
+                inner_slot = slot,
+                char_obj = font.CharProcs["I" .. slot],
+                width = font.Widths[slot],
+                codepoint = tonumber(name),
+            }
+
+            pdf_font[name] = char
+            dests[dest_key] = char
+
+            by_font[fontname] = by_font[fontname] or {}
+            by_font[fontname][slot] = char
+        end
     end
 
-    -- inspect(font)
-    chars[filename] = font
-    return font
-end })
+    make_fonts(filename, by_font)
 
-local function emoji_load(font, char)
-    -- char = chars[font][char]
-    -- font = fonts[font][char]
+    return pdf_font
+end)
 
-    -- print(font, char)
-    -- inspect(char)
-    -- return ref { nil, font }
-    return font
-end
 
-local function emoji_print(font, char)
-    -- local emoji = emoji_load(font, char)
-    -- print(emoji)
-    -- print(pdf.getpageresources())
-end
+--- Makes the upper-level virtual font from the provided PDF document.
+---
+--- @param pdf_font string The name of the PDF file
+--- @return integer font_id - The id of the font
+local load_font = memoized_table(function(pdf_font)
+    chars(pdf_font)
+
+    local define_ids = {}
+    local fontid_to_defindex = {}
+    for name, id in pairs(fonts[pdf_font]) do
+        define_ids[#define_ids+1] = { id = id }
+        fontid_to_defindex[id] = #define_ids
+    end
+
+    local define_chars = {}
+    for name, char in pairs(chars[pdf_font]) do
+        name = tonumber(name)
+        if name then
+            local id = fonts[pdf_font][char.inner_fontname]
+            define_chars[name] = {
+                width = char.width * bp_to_sp,
+                height = height,
+                depth = 0,
+                commands = {
+                    { "slot", fontid_to_defindex[id], char.inner_slot }
+                },
+            }
+        end
+    end
+
+    return font.define {
+        name = "unemojifont-" .. pdf_font,
+        parameters = {},
+        characters = define_chars,
+        properties = {},
+        type = "virtual",
+        fonts = define_ids,
+    }
+end)
+
+
+--- Gets the PDF object for a stream.
+---
+--- @param stream luatex.pdfe.stream|string The stream
+--- @return integer - The PDF object number
+local stream_object = memoized_table(function(stream)
+    local str
+    if type(stream) == "luatex.pdfe.stream" then
+        str = stream(true)
+    elseif type(stream) == "string" then
+        str = stream
+    else
+        return 0
+    end
+
+    return pdf.immediateobj("stream", str)
+end)
+
+
+-- Expose everything to the TeX side
 
 register_tex_cmd(
     "load",
-    emoji_load,
+    function(fontname)
+        token.set_char("unemojifont", load_font(fontname))
+    end,
     { "string", "string" }
 )
 
 register_tex_cmd(
     "print",
-    emoji_print,
+    function(fontname, char_name)
+        local char = chars[fontname][char_name] or
+                     chars[fontname][tostring(utf8.codepoint(char_name))]
+
+        if char and char.codepoint then
+            tex.forcehmode()
+            local glyph = node.new("glyph")
+            glyph.char = char.codepoint
+            glyph.font = load_font(fontname)
+            node.write(glyph)
+        end
+    end,
     { "string", "string" }
 )
 
-local base_char = {
-    width = tex.sp("10bp"),
-    height = tex.sp("10bp"),
-    depth = 0,
-}
 
-local ids = {}
-local type3s = setmetatable({}, { __index = function(t, k)
-    if type(k) == "string" then
-        local characters = {}
-        for i = 1,255 do
-            characters[i] = base_char
+luatexbase.add_to_callback(
+    "provide_charproc_data",
+    function (mode, font_id, slot)
+        if mode == 2 then
+            local char = fonts[font_id][slot]
+            return stream_object[char.char_obj], char.width
+        elseif mode == 3 then
+            return 0.093
         end
-
-        local id = font.define {
-            name = "unemoji-" .. k,
-            parameters = {},
-            properties = {},
-            characters = characters,
-            encodingbytes = 0,
-            psname = "none",
-        }
-
-        ids[#ids+1] = { id = id }
-        local ret = { #ids, id }
-        t[k] = ret
-        return ret
-    elseif type(k) == "number" then
-        for kk, vv in pairs(t) do
-            if vv[2] == k then
-                return kk
-            end
-        end
-    end
-end })
-
-do
-    local characters = {}
-    for char, val in pairs(chars["noto-emoji.pdf"]) do
-        char = tonumber(char)
-        if char then
-            local data = table.copy(base_char)
-            data.commands = { { "slot", type3s[val[1]][1], val[2] } }
-            characters[char] = data
-        end
-    end
-
-    token.set_char("unemojifont", font.define {
-        name = "unemojifont",
-        parameters = {},
-        characters = characters,
-        properties = {},
-        type = "virtual",
-        fonts = ids
-    })
-end
-
-luatexbase.add_to_callback("provide_charproc_data", function (mode, id, char)
-    if mode == 2 then
-        local font = "noto-emoji.pdf"
-        char = tostring(char)
-        local char_ref, width = table.unpack(fonts[font][{type3s[id], char}])
-        return char_ref, width
-    elseif mode == 3 then
-        return 0.08
-    end
-end, "unemoji")
+    end,
+    "unemoji"
+)

@@ -4,7 +4,9 @@
 
 \ifdefined\directlua
     \input ltluatex
+    \pdfextension glyphtounicode{fake!}{0000}
     \directlua{require "unnamed-emoji"}
+    \unemoji@load{noto-emoji.pdf}{fake!}
 \fi
 
 \ifdefined\pdftexversion

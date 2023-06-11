@@ -34,11 +34,36 @@
             \seq_gput_right:Nn \g__unemoji_used_seq { #2 }
         }
     }
+
+    % Save the list of used emojis to the aux file
+    \hook_gput_code:nnn { enddocument / afterlastpage } { unnamed-emoji } {
+        \clist_set_from_seq:NN \l_tmpa_clist \g__unemoji_used_seq
+
+        \tl_put_left:Ne \l_tmpa_clist {
+            \token_to_str:N \emoji@register \c_left_brace_str
+        }
+
+        \tl_put_right:NV \l_tmpa_clist \c_right_brace_str
+
+        \iow_now:NV \@auxout \l_tmpa_clist
+    }
+
+    % Preload the used emojis from the aux file
+    \cs_new_protected:Nn \__unemoji_register:n {
+        \clist_map_inline:nn { #1 } {
+            \__unemoji_load:nn { noto-emoji.pdf } { ##1 }
+        }
+    }
+    \cs_set_eq:NN \emoji@register \__unemoji_register:n
 }
 
 % LuaTeX
 \sys_if_engine_luatex:T {
+    \pdfextension glyphtounicode {fake!} {0000}
     \lua_load_module:n { unnamed-emoji }
+
+    \__unemoji_load:nn { noto-emoji.pdf } { fake! }
+    \cs_set_eq:NN \emoji@register \use_none:n
 }
 
 % Bad engine
@@ -55,26 +80,5 @@
 \NewDocumentCommand { \emoji } { O{noto-emoji.pdf} m } {
     \__unemoji_print:nn { #1 } { #2 }
 }
-
-% Save the list of used emojis to the aux file
-\hook_gput_code:nnn { enddocument / afterlastpage } { unnamed-emoji } {
-    \clist_set_from_seq:NN \l_tmpa_clist \g__unemoji_used_seq
-
-    \tl_put_left:Ne \l_tmpa_clist {
-        \token_to_str:N \emoji@register \c_left_brace_str
-    }
-
-    \tl_put_right:NV \l_tmpa_clist \c_right_brace_str
-
-    \iow_now:NV \@auxout \l_tmpa_clist
-}
-
-% Preload the used emojis from the aux file
-\cs_new_protected:Nn \__unemoji_register:n {
-    \clist_map_inline:nn { #1 } {
-        \__unemoji_load:nn { noto-emoji.pdf } { ##1 }
-    }
-}
-\cs_set_eq:NN \emoji@register \__unemoji_register:n
 
 \endinput
