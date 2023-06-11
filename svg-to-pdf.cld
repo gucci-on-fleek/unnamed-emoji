@@ -1,4 +1,7 @@
-#!/usr/bin/env -S context --result=noto-emoji --once --debug
+#!/usr/bin/env -S context --once --debug
+-- -*- mode: lua; -*-
+-- vim: syntax=lua
+
 -- unnamed-emoji
 -- https://github.com/gucci-on-fleek/unnamed-emoji
 -- SPDX-License-Identifier: MPL-2.0+
