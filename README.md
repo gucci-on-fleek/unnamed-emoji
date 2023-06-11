@@ -64,6 +64,16 @@ Duck \emoji{🦆}.
 \bye
 ```
 
+## Missing features
+
+- No support for XeTeX.
+
+- Ligated/composed emoji are not currently supported, but this should be
+  fairly simple to fix.
+
+- No support for direct Unicode input with pdfTeX. This should also be
+  fixable.
+
 ## Generating the PDF-fonts
 
 Make sure that `qpdf` and ConTeXt LMTX are installed. Next, uncomment
