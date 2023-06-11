@@ -1,3 +1,8 @@
+-- unnamed-emoji
+-- https://github.com/gucci-on-fleek/unnamed-emoji
+-- SPDX-License-Identifier: MPL-2.0+
+-- SPDX-FileCopyrightText: 2023 Max Chernoff
+
 -- Save some globals
 local array = pdfe.arraytotable
 local dict = pdfe.dictionarytotable

@@ -1,4 +1,8 @@
 #!/usr/bin/env -S context --result=noto-emoji --once --debug
+-- unnamed-emoji
+-- https://github.com/gucci-on-fleek/unnamed-emoji
+-- SPDX-License-Identifier: MPL-2.0+
+-- SPDX-FileCopyrightText: 2023 Max Chernoff
 
 -- Constants
 local bp_to_sp <const> = tex.sp("1bp") * 0.93
