@@ -75,6 +75,8 @@ Duck \emoji{🦆}.
 - No support for direct Unicode input with pdfTeX. This should also be
   fixable.
 
+- Size changing doesn't work quite yet.
+
 ## Generating the PDF-fonts
 
 Make sure that `qpdf` and ConTeXt LMTX are installed. Next, uncomment
