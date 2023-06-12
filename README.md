@@ -11,7 +11,10 @@ very polished yet, but mostly functional.
 
 ## Features
 
-- Supports pdfLaTeX, LuaLaTeX, Plain pdfTeX, and Plain LuaTeX.
+- Directly supports pdfLaTeX, LuaLaTeX, Plain pdfTeX, and Plain LuaTeX.
+
+- Supports XeLaTeX, Plain XeTeX, and `dvipdfmx` with a [patched version of
+  `dvipdfmx`](dvipdfmx.patch).
 
 - Only needs a single PDF file (2.9 MB) to supply all characters. And
   all the required metadata is in the PDF file itself, so no additional
@@ -66,8 +69,6 @@ Duck \emoji{🦆}.
 
 ## Missing features
 
-- No support for XeTeX.
-
 - Ligated/composed emoji are not currently supported, but this should be
   fairly simple to fix.
 
@@ -84,6 +85,17 @@ Then, run the following command:
 
 ```sh
 ./svg-to-pdf.cld --in=/path/to/svg/files/ --result=output-name
+```
+
+## Patching `dvipdfmx`
+
+```sh
+git clone --depth 1 https://github.com/TeX-Live/texlive-source.git
+cd texlive-source
+git apply /path/to/unnamed-emoji/dvipdfmx.patch
+mkdir Work && cd Work
+../configure --disable-all-pkgs --enable-dvipdfm-x
+sudo cp -f texk/dvipdfm-x/xdvipdfmx "$(kpsewhich --var-value=SELFAUTOLOC)/xdvipdfmx"
 ```
 
 ## Licence

@@ -1,0 +1,336 @@
+diff --git a/texk/dvipdfm-x/epdf.c b/texk/dvipdfm-x/epdf.c
+index 95094823..f0651934 100644
+--- a/texk/dvipdfm-x/epdf.c
++++ b/texk/dvipdfm-x/epdf.c
+@@ -129,8 +129,9 @@ pdf_include_page (pdf_ximage        *ximage,
+   if (options.page_no == 0)
+     options.page_no = 1;
+   page = pdf_doc_get_page(pf,
+-                          options.page_no, options.bbox_type,
+-                          &info.bbox, &info.matrix, &resources);
++                          options.page_no, options.page_name,
++                          options.bbox_type, &info.bbox, &info.matrix,
++                          &resources);
+ 
+   if(!page)
+     goto error_silent;
+@@ -304,7 +305,7 @@ pdf_copy_clip (FILE *image_file, int pageNo, double x_user, double y_user)
+   pdf_invertmatrix(&M);
+   M.e += x_user; M.f += y_user;
+ 
+-  page_tree = pdf_doc_get_page(pf, pageNo, 0, &bbox, &mtrx, NULL);
++  page_tree = pdf_doc_get_page(pf, pageNo, NULL, 0, &bbox, &mtrx, NULL);
+   if (!page_tree) {
+     pdf_close(pf);
+     return -1;
+diff --git a/texk/dvipdfm-x/pdfdoc.c b/texk/dvipdfm-x/pdfdoc.c
+index 75ed8179..f7ce3231 100644
+--- a/texk/dvipdfm-x/pdfdoc.c
++++ b/texk/dvipdfm-x/pdfdoc.c
+@@ -1024,6 +1024,134 @@ set_transform_matrix (pdf_tmatrix *matrix, pdf_rect *bbox, pdf_obj *rotate)
+   return 0;
+ }
+ 
++static pdf_obj *
++page_by_name (pdf_obj * catalog, char * page_name) {
++  pdf_obj *names = pdf_deref_obj(pdf_lookup_dict(catalog, "Names"));
++  if (!PDF_OBJ_DICTTYPE(names)) {
++    if (names)
++      pdf_release_obj(names);
++    goto error_exit;
++  }
++
++  pdf_obj *dests = pdf_deref_obj(pdf_lookup_dict(names, "Dests"));
++  pdf_release_obj(names);
++  if (!PDF_OBJ_DICTTYPE(dests)) {
++    if (dests)
++          pdf_release_obj(dests);
++    goto error_exit;
++  }
++
++  pdf_obj *up_dests;
++  int pos[] = {0, 0, 0, 0, 0};
++  int level = 0;
++
++  for (int i = 0; i < 1000; i++) {
++    if (level < 0 || level >= sizeof(pos) / sizeof(pos[0]))
++      goto error_exit;
++
++    pdf_obj *limits = pdf_deref_obj(pdf_lookup_dict(dests, "Limits"));
++    if (!PDF_OBJ_ARRAYTYPE(limits)) {
++      if (limits)
++            pdf_release_obj(limits);
++      goto error_exit;
++    }
++
++    pdf_obj *start_obj = pdf_deref_obj(pdf_get_array(limits, 0));
++    pdf_obj *end_obj = pdf_deref_obj(pdf_get_array(limits, 1));
++    pdf_release_obj(limits);
++    if (!PDF_OBJ_STRINGTYPE(start_obj) || !PDF_OBJ_STRINGTYPE(end_obj)) {
++      if (start_obj)
++            pdf_release_obj(start_obj);
++      if (end_obj)
++            pdf_release_obj(end_obj);
++      goto error_exit;
++    }
++    char *start = pdf_string_value(start_obj);
++    char *end = pdf_string_value(end_obj);
++    pdf_release_obj(start_obj);
++    pdf_release_obj(end_obj);
++
++    if (strcmp(page_name, start) >= 0 && strcmp(page_name, end) <= 0) {
++      names = pdf_deref_obj(pdf_lookup_dict(dests, "Names"));
++      if (!PDF_OBJ_ARRAYTYPE(names)) {
++        if (names)
++              pdf_release_obj(names);
++      } else {
++        goto found;
++      }
++
++      pdf_obj *kids = pdf_deref_obj(pdf_lookup_dict(dests, "Kids"));
++      if (!PDF_OBJ_ARRAYTYPE(kids)) {
++        if (kids)
++              pdf_release_obj(kids);
++        goto error_exit;
++      }
++
++      int kids_length = pdf_array_length(kids);
++      for (; pos[level] < kids_length; pos[level]++) {
++        up_dests = dests;
++        dests = pdf_deref_obj(pdf_get_array(kids, pos[level]));
++        level++;
++        goto outer;
++      }
++    } else {
++      if (--level >= 0)
++        pos[level]++;
++      pdf_release_obj(dests);
++      dests = up_dests;
++    }
++    outer:
++  }
++
++error_exit:
++  WARN("Bad named destination: %s", page_name);
++  return NULL;
++
++found:
++  int names_length = pdf_array_length(names);
++  for (int i = 0; i < names_length; i++) {
++    pdf_obj *name_obj = pdf_deref_obj(pdf_get_array(names, i));
++    if (!PDF_OBJ_STRINGTYPE(name_obj)) {
++      if (name_obj)
++        pdf_release_obj(name_obj);
++      continue;
++    }
++
++    char *name = pdf_string_value(name_obj);
++    pdf_release_obj(name_obj);
++
++    if (strcmp(page_name, name) != 0)
++      continue;
++
++    pdf_obj *dest = pdf_deref_obj(pdf_get_array(names, ++i));
++    if (!PDF_OBJ_DICTTYPE(dest)) {
++      if (dest)
++        pdf_release_obj(dest);
++      continue;
++    }
++
++    pdf_obj *dest_inner = pdf_deref_obj(pdf_lookup_dict(dest, "D"));
++    pdf_release_obj(dest);
++    if (!PDF_OBJ_ARRAYTYPE(dest_inner)) {
++      if (dest_inner)
++        pdf_release_obj(dest_inner);
++      goto error_exit;
++    }
++
++    pdf_obj *page = pdf_deref_obj(pdf_get_array(dest_inner, 0));
++    pdf_release_obj(dest_inner);
++    if (!PDF_OBJ_DICTTYPE(page)) {
++      if (page)
++        pdf_release_obj(page);
++      goto error_exit;
++    }
++
++    return page;
++  }
++
++  goto error_exit;
++}
++
+ /*
+  * From PDFReference15_v6.pdf (p.119 and p.834)
+  *
+@@ -1081,7 +1209,8 @@ set_transform_matrix (pdf_tmatrix *matrix, pdf_rect *bbox, pdf_obj *rotate)
+  */
+ pdf_obj *
+ pdf_doc_get_page (pdf_file *pf,
+-                  int page_no, enum pdf_page_boundary opt_bbox, /* load options */
++                  int page_no, char * page_name,
++                  enum pdf_page_boundary opt_bbox, /* load options */
+                   pdf_rect *bbox, pdf_tmatrix *matrix,  /* returned value */
+                   pdf_obj **resources_p /* returned values */
+                   ) {
+@@ -1093,12 +1222,15 @@ pdf_doc_get_page (pdf_file *pf,
+ 
+   catalog = pdf_file_get_catalog(pf);
+ 
+-  page_tree = pdf_deref_obj(pdf_lookup_dict(catalog, "Pages"));
++  if (page_name)
++    page_tree = page_by_name(catalog, page_name);
++  else
++    page_tree = pdf_deref_obj(pdf_lookup_dict(catalog, "Pages"));
+ 
+   if (!PDF_OBJ_DICTTYPE(page_tree))
+     goto error_exit;
+ 
+-  {
++  if (!page_name) {
+     int count;
+     pdf_obj *tmp = pdf_deref_obj(pdf_lookup_dict(page_tree, "Count"));
+     if (!PDF_OBJ_NUMBERTYPE(tmp)) {
+diff --git a/texk/dvipdfm-x/pdfdoc.h b/texk/dvipdfm-x/pdfdoc.h
+index bd8bf3be..85e05bf9 100644
+--- a/texk/dvipdfm-x/pdfdoc.h
++++ b/texk/dvipdfm-x/pdfdoc.h
+@@ -94,7 +94,8 @@ extern pdf_obj *pdf_doc_get_reference(const char *category);
+ #define pdf_doc_this_page() pdf_doc_get_dictionary("@THISPAGE")
+ 
+ extern int pdf_doc_get_page_count(pdf_file *pf);
+-extern pdf_obj *pdf_doc_get_page(pdf_file *pf, int page_no, enum pdf_page_boundary opt_bbox,
++extern pdf_obj *pdf_doc_get_page(pdf_file *pf, int page_no, char * page_name,
++                                 enum pdf_page_boundary opt_bbox,
+                                  pdf_rect *bbox, pdf_tmatrix *matrix, pdf_obj **resources_p);
+ 
+ extern int pdf_doc_current_page_number(void);
+diff --git a/texk/dvipdfm-x/pdfximage.c b/texk/dvipdfm-x/pdfximage.c
+index 92ee5142..016583fd 100644
+--- a/texk/dvipdfm-x/pdfximage.c
++++ b/texk/dvipdfm-x/pdfximage.c
+@@ -79,6 +79,7 @@ struct attr_
+   int      bbox_type;  /* Ugh */
+   pdf_obj *dict;
+   char     tempfile;
++  char    *page_name;
+ };
+ 
+ struct pdf_ximage_
+@@ -143,6 +144,8 @@ pdf_init_ximage_struct (pdf_ximage *I)
+ 
+   I->attr.dict     = NULL;
+   I->attr.tempfile = 0;
++
++  I->attr.page_name = NULL;
+ }
+ 
+ static void
+@@ -302,6 +305,7 @@ load_image (const char *ident, const char *filename, const char *fullname, int f
+   }
+ 
+   I->attr.page_no   = options.page_no;
++  I->attr.page_name = options.page_name;
+   I->attr.bbox_type = options.bbox_type;
+   I->attr.dict      = options.dict; /* unsafe? */
+ 
+@@ -411,6 +415,7 @@ pdf_ximage_load_image (const char *ident, const char *filename, load_options opt
+   }
+   if (id >= 0) {
+     if (I->attr.page_no == options.page_no &&
++        strcmp(I->attr.page_name, options.page_name) == 0 &&
+         !pdf_compare_object(I->attr.dict, options.dict) && /* ????? */
+         I->attr.bbox_type == options.bbox_type) {
+       return id;
+diff --git a/texk/dvipdfm-x/pdfximage.h b/texk/dvipdfm-x/pdfximage.h
+index 6cd99055..92f9021d 100644
+--- a/texk/dvipdfm-x/pdfximage.h
++++ b/texk/dvipdfm-x/pdfximage.h
+@@ -54,6 +54,7 @@ typedef struct {
+   int  page_no;
+   enum pdf_page_boundary bbox_type;
+   pdf_obj *dict;
++  char *page_name;
+ } load_options;
+ 
+ typedef struct pdf_ximage_ pdf_ximage;
+diff --git a/texk/dvipdfm-x/spc_pdfm.c b/texk/dvipdfm-x/spc_pdfm.c
+index f6375cdc..fffe2714 100644
+--- a/texk/dvipdfm-x/spc_pdfm.c
++++ b/texk/dvipdfm-x/spc_pdfm.c
+@@ -1235,7 +1235,7 @@ spc_handler_pdfm_image (struct spc_env *spe, struct spc_arg *args)
+   char            *ident = NULL;
+   pdf_obj         *fspec;
+   transform_info   ti;
+-  load_options     options = {1, 0, NULL};
++  load_options     options = {1, 0, NULL, NULL};
+ 
+   skip_white(&args->curptr, args->endptr);
+   if (args->curptr[0] == '@') {
+@@ -1250,7 +1250,8 @@ spc_handler_pdfm_image (struct spc_env *spe, struct spc_arg *args)
+    */
+   transform_info_clear(&ti);
+   if (spc_util_read_blahblah(spe, &ti,
+-                             &options.page_no, &options.bbox_type, args) < 0) {
++                             &options.page_no, &options.bbox_type,
++                             &options.page_name, args) < 0) {
+     spc_warn(spe, "Reading option field in pdf:image failed.");
+     if (ident)
+       RELEASE(ident);
+diff --git a/texk/dvipdfm-x/spc_util.c b/texk/dvipdfm-x/spc_util.c
+index efe44bef..de13c584 100644
+--- a/texk/dvipdfm-x/spc_util.c
++++ b/texk/dvipdfm-x/spc_util.c
+@@ -898,6 +898,7 @@ int
+ spc_util_read_blahblah (struct spc_env *spe,
+                         transform_info *p, int *page_no,
+                         enum pdf_page_boundary *bbox_type,
++                        char **page_name,
+                         struct spc_arg *ap)
+ {
+   int     has_scale, has_xscale, has_yscale, has_rotate, has_matrix;
+@@ -912,6 +913,8 @@ spc_util_read_blahblah (struct spc_env *spe,
+     "page",
+ #define  K__PAGEBOX    12
+     "pagebox",
++#define  K__NAMED      13
++    "named",
+      NULL
+   };
+   double xscale, yscale, rotate;
+@@ -1055,6 +1058,11 @@ spc_util_read_blahblah (struct spc_env *spe,
+         }
+       }
+       break;
++    case  K__NAMED:
++      {
++        *page_name = parse_c_string (&ap->curptr, ap->endptr);
++      }
++      break;
+ 
+     default:
+       error = -1;
+diff --git a/texk/dvipdfm-x/spc_util.h b/texk/dvipdfm-x/spc_util.h
+index 63ec8f83..6310477e 100644
+--- a/texk/dvipdfm-x/spc_util.h
++++ b/texk/dvipdfm-x/spc_util.h
+@@ -45,6 +45,7 @@ extern int  spc_util_read_blahblah  (struct spc_env *spe,
+                                      transform_info         *dimtrns,
+                                      int                    *page_no,
+                                      enum pdf_page_boundary *bbox_type,
++                                     char                  **page_name,
+                                      struct spc_arg *args);
+ 
+ 
+diff --git a/texk/dvipdfm-x/xbb.c b/texk/dvipdfm-x/xbb.c
+index e21c232d..96ac116a 100644
+--- a/texk/dvipdfm-x/xbb.c
++++ b/texk/dvipdfm-x/xbb.c
+@@ -260,7 +260,7 @@ static void do_pdf (FILE *fp, char *filename)
+     return;
+   }
+   count = pdf_doc_get_page_count(pf);
+-  page  = pdf_doc_get_page(pf, page_no, PageBox, &bbox, &matrix, NULL);
++  page  = pdf_doc_get_page(pf, page_no, NULL, PageBox, &bbox, &matrix, NULL);
+ 
+   pdf_close(pf);
+ 

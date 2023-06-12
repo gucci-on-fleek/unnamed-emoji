@@ -8,8 +8,8 @@
 
 \ProvidesExplPackage
     {unnamed-emoji}
-    {2023/06/09} %%slashdate
-    {v0.0.1} %%version
+    {2023/06/12} %%slashdate
+    {v0.0.2} %%version
     {An as-of-yet unnamed emoji package}
 
 % Generate needed variants
@@ -19,6 +19,8 @@
 % Declare variables
 \prop_new:N \g__unemoji_used_prop
 \seq_new:N \g__unemoji_used_seq
+
+\cs_set_eq:NN \emoji@register \use_none:n
 
 % pdfTeX
 \sys_if_engine_pdftex:T {
@@ -67,17 +69,38 @@
     \lua_load_module:n { unnamed-emoji }
 
     \__unemoji_load:nn { noto-emoji.pdf } { fake! }
-    \cs_set_eq:NN \emoji@register \use_none:n
 }
 
-% Bad engine
+% Hopefully we're using dvipdfmx...
 \cs_if_exist:NF \__unemoji_print:nn {
-    \msg_new:nnn
-        { unnamed-emoji }
-        { bad-engine }
-        { LuaTeX~ or~ pdfTeX~ is~ REQUIRED! }
-
-    \msg_critical:nn { unnamed-emoji } { bad-engine }
+    % Prints an emoji
+    \cs_new_protected:Nn \__unemoji_print:nn {
+        \str_set:Nn \l_tmpa_str { #2 }
+        \prop_get:NVNTF \g__unemoji_used_prop \l_tmpa_str \l_tmpa_tl {
+            \hbox_to_wd:nn
+                { 10bp }
+                {
+                    \special {
+                        pdf:usexobj \c_space_tl
+                        @ \l_tmpa_str
+                    }
+                    \hss
+                }
+        }{
+            \hbox_to_wd:nn
+                { 10bp }
+                {
+                    \special{
+                        pdf:image \c_space_tl
+                        @ \l_tmpa_str \c_space_tl
+                        named ~ "emoji #2" \c_space_tl
+                        ( #1 )
+                    }
+                    \hss
+                }
+            \prop_put:NVV \g__unemoji_used_prop \l_tmpa_str \c_true_bool
+        }
+    }
 }
 
 % Public interface

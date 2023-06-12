@@ -3,7 +3,7 @@
 % SPDX-License-Identifier: MPL-2.0+
 % SPDX-FileCopyrightText: 2023 Max Chernoff
 
-\wlog{unnamed-emoji v0.0.1} %%version
+\wlog{unnamed-emoji v0.0.2} %%version
 
 \catcode`@=11
 
@@ -27,9 +27,12 @@
 \fi
 
 \ifx\unemoji@print\undefined
-    \errmessage{%
-        LuaTeX or pdfTeX is REQUIRED!%
-    }
+    \def\unemoji@print#1#2{%
+        \hbox to 10pt{%
+            \special{pdf:image named "emoji#2" (#1)}%
+            \hss%
+        }%
+    }%
 \fi
 
 \def\emojifont{noto-emoji.pdf}
