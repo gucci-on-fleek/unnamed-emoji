@@ -171,13 +171,20 @@ local function process(name)
         return
     end
 
-    local char <const> = file.nameonly(name):match("u(%x+)")
-    local codepoint <const> = tonumber("0x" .. char)
+    local components <const> = {}
+    for char in file.nameonly(name):match("emoji_u(.*)$"):gmatch("[^_]+") do
+        if char ~= "200d" then
+            components[#components+1] = char
+        end
+    end
 
-    if chars[char] then -- Ignore duplicates
-        return
+    local char <const> = components[1]
+
+    local codepoint
+    if not chars[char] then
+        codepoint = tonumber("0x" .. char)
     else
-        chars[char] = true
+        codepoint = fonts.helpers.sharedprivates[table.concat(components, "-")]
     end
 
     local contents <const> = select(2, resolvers.loadbinfile(name))
@@ -217,9 +224,23 @@ local function process(name)
 
     -- Add the destinations
     pageno = pageno + 1
-    make_name(char)
-    make_name(codepoint)
-    make_name(characters.data[codepoint].description:lower())
+    if #components == 1 and not chars[char] then
+        make_name(char)
+        make_name(codepoint)
+        make_name(characters.data[codepoint].description:lower())
+    else
+        make_name(table.concat(components, "-"))
+        make_name(codepoint)
+
+        local char_name = {}
+        for _, char in pairs(components) do
+            char_name[#char_name+1] =
+                characters.data[tonumber("0x" .. char)].description:lower()
+        end
+        make_name(table.concat(char_name, " "))
+    end
+
+    chars[char] = true
 
     -- Add the glyph to the document
     context.startTEXpage()

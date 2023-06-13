@@ -16,7 +16,7 @@ very polished yet, but mostly functional.
 - Supports XeLaTeX, Plain XeTeX, and `dvipdfmx` with a [patched version of
   `dvipdfmx`](dvipdfmx.patch).
 
-- Only needs a single PDF file (2.9 MB) to supply all characters. And
+- Only needs a single PDF file (8.7 MB) to supply all characters. And
   all the required metadata is in the PDF file itself, so no additional
   files are needed.
 
@@ -34,6 +34,10 @@ very polished yet, but mostly functional.
 
 - All characters are properly Unicode-encoded, so you can copy-and-paste
   them from your compiled documents, even with pdfTeX.
+
+- Supports ligated/composed emoji.
+
+- With Noto Emoji, supports 3458 unique emoji.
 
 ## Examples
 
@@ -68,9 +72,6 @@ Duck \emoji{🦆}.
 ```
 
 ## Missing features
-
-- Ligated/composed emoji are not currently supported, but this should be
-  fairly simple to fix.
 
 - No support for direct Unicode input with pdfTeX. This should also be
   fixable.

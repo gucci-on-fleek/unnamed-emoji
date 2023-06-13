@@ -15,6 +15,7 @@
 % Generate needed variants
 \cs_generate_variant:Nn \iow_now:Nn { NV }
 \cs_generate_variant:Nn \tl_put_left:Nn { Ne }
+\cs_generate_variant:Nn \str_remove_all:Nn { NV }
 
 % Declare variables
 \prop_new:N \g__unemoji_used_prop
@@ -76,6 +77,8 @@
     % Prints an emoji
     \cs_new_protected:Nn \__unemoji_print:nn {
         \str_set:Nn \l_tmpa_str { #2 }
+        \str_remove_all:NV \l_tmpa_str \c_space_tl
+
         \prop_get:NVNTF \g__unemoji_used_prop \l_tmpa_str \l_tmpa_tl {
             \hbox_to_wd:nn
                 { 10bp }
