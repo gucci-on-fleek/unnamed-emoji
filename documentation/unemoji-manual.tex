@@ -29,8 +29,10 @@
         public = true,
         actions = function()
             local buff = buffers.raw("latex")
+            local preamble = buffers.raw("preamble")
+            buffers.assign("preamble", "")
             buffers.assign("code", buff)
-            buffers.assign("latex", buff:gsub("\\documentclass{.-}", "\\documentclass[border=1pt]{standalone}"))
+            buffers.assign("latex", preamble .. buff:gsub("\\documentclass{.-}", "\\documentclass[border=1pt]{standalone}"))
         end,
     }
 
@@ -47,14 +49,25 @@
                 "\\usepackage{unnamed-emoji}" ..
                 "\\begin{document}" ..
                 buff ..
-                "\\end{document}"
+                "\n\\end{document}"
             )
         end,
     }
 
     sandbox.registerrunner {
         name     = "latex",
-        program  = "pdflatex",
+        program  = "lualatex",
+        method   = "execute",
+        template = "%filename%",
+        checkers = {
+            filename = "readable",
+            path     = "string",
+        }
+    }
+
+    sandbox.registerrunner {
+        name     = "plain",
+        program  = "pdftex",
         method   = "execute",
         template = "%filename%",
         checkers = {
@@ -92,7 +105,7 @@
 
 \unprotect
 % Define the full drawing command
-\define[1]\outputframe{
+\define[2]\outputframe{
     \startframedtext[
         background=outputframe,
         width=fit,
@@ -101,15 +114,16 @@
         height=fit,
         offset=1ex,
     ]
-        \setupTABLE[c][width=0.45\textwidth]
-        \setupTABLE[c][1][background=divider]
-        \startTABLE[offset=0pt, frame=off]
+        \setupTABLE[c][1][width=0.65\textwidth, background=divider]
+        \setupTABLE[c][2][width=0.30\textwidth]
+        \startTABLE[offset=0pt, frame=off, align=top]
         \NC \setupbodyfont[9.5pt]
             \typeTEXbuffer[code]
 
         \NC \externalfigure[#1][
-            maxwidth=\dimexpr 0.4\textwidth,
-            maxheight=0.9\textheight,
+            factor=fit,
+            maxwidth=\dimexpr 0.29\textwidth,
+            #2
         ]
 
         \NC\NR
@@ -118,6 +132,8 @@
 }
 
 % Full document commands
+\def\extrafigureparams{maxheight=2\baselineskip,width=0.29\textwidth,}
+
 \define\startlatex{%
     \grabbufferdata[latex][startlatex][stoplatex]%
 }
@@ -125,7 +141,7 @@
 \def\stoplatex{%
     \fixbuffers%
     \runbuffer[latex][latex]%
-    \outputframe{\lasttypesetbuffer}%
+    \normalexpanded{\noexpand\outputframe{\lasttypesetbuffer}{\extrafigureparams}}%
     \spac_indentation_variant_no%
 }
 
@@ -137,9 +153,21 @@
 \def\stoplatexsnippet{%
     \buffersnippet%
     \runbuffer[latex][latex]%
-    \outputframe{\lasttypesetbuffer}%
+    \normalexpanded{\noexpand\outputframe{\lasttypesetbuffer}{\extrafigureparams}}%
     \spac_indentation_variant_no%
 }%
+
+% Plain
+\define\startplain{%
+    \grabbufferdata[latex][startplain][stopplain]%
+}
+
+\def\stopplain{%
+    \fixbuffers%
+    \runbuffer[latex][plain]%
+    \normalexpanded{\noexpand\outputframe{\lasttypesetbuffer}{\extrafigureparams}}%
+    \spac_indentation_variant_no%
+}
 \protect
 
 \startdocument[
@@ -155,6 +183,180 @@ natively supports \pdfTeX{} and \LuaTeX{}, and can support \XeTeX{} and
 
 \subject{Contents}
 \placecontent[criterium=all]
+
+\section{Loading}
+
+\subsection{\LaTeX{}}
+\startlatex
+\documentclass{article}
+
+\usepackage{unnamed-emoji}
+
+\begin{document}
+    \emoji{duck}
+\end{document}
+\stoplatex
+
+\subsection{Plain \TeX{}}
+\startbuffer[preamble]
+\pdfhorigin=0in
+\pdfvorigin=0in
+\pdfpagewidth=1em
+\pdfpageheight=\baselineskip
+\parindent=0pt
+\stopbuffer
+\startplain
+\input unnamed-emoji
+
+\emoji{duck}
+\bye
+\stopplain
+
+\section{Input Formats}
+
+\subsection{Name}
+\startlatexsnippet
+\emoji{duck}
+\stoplatexsnippet
+
+\subsection{Hexadecimal}
+\startlatexsnippet
+\emoji{1f986}
+\stoplatexsnippet
+
+\subsection{Decimal}
+\startlatexsnippet
+\emoji{129414}
+\stoplatexsnippet
+
+\subsection{Unicode}
+\startlatexsnippet
+\emoji{🦆}  % LuaTeX Only!
+\stoplatexsnippet
+
+\section{Font Selection}
+\subsection{\LaTeX{}}
+\begingroup
+\def\extrafigureparams{width=0.29\textwidth}
+\startlatexsnippet
+\begin{tabular}{r@{: }l}
+    \texttt{noto-emoji} &
+    \emoji[noto-emoji]{1f638} \\
+    %
+    \texttt{twemoji} &
+    \emoji[twemoji]{1f638} \\
+    %
+    \texttt{fxemoji} &
+    \emoji[fxemoji]{1f638} \\
+    %
+    \texttt{openmoji} &
+    \emoji[openmoji]{1f638} \\
+    %
+    \texttt{emojione} &
+    \emoji[emojione]{1f638} \\
+\end{tabular}
+\stoplatexsnippet
+\endgroup
+
+\subsection{Plain \TeX{}}
+\begingroup
+\def\extrafigureparams{width=0.29\textwidth}
+\startbuffer[preamble]
+\pdfhorigin=0in
+\pdfvorigin=0in
+\pdfpagewidth=1.2in
+\pdfpageheight=6\baselineskip
+\parindent=0pt
+\stopbuffer
+\startplain
+\input unnamed-emoji
+\halign{\hfil\tt#\unskip:&#\hfil\cr
+    noto-emoji &
+    \def\emojifont{noto-emoji}
+    \emoji{1f638} \cr
+    %
+    twemoji &
+    \def\emojifont{twemoji}
+    \emoji{1f638} \cr
+    %
+    fxemoji &
+    \def\emojifont{fxemoji}
+    \emoji{1f638} \cr
+    %
+    openmoji &
+    \def\emojifont{openmoji}
+    \emoji{1f638} \cr
+    %
+    emojione &
+    \def\emojifont{emojione}
+    \emoji{1f638} \cr
+}
+\bye
+\stopplain
+\endgroup
+
+\section{Composed Emoji}
+
+\subsection{Name}
+\startlatexsnippet
+\emoji[twemoji]
+  {regional indicator symbol letter c
+   regional indicator symbol letter a}
+\stoplatexsnippet
+
+\subsection{Hexadecimal}
+\startlatexsnippet
+\emoji[twemoji]{1f1e8-1f1e6}
+\stoplatexsnippet
+
+\section{Licence}
+
+Most files should list their licence near the top. In general, the code
+is licensed under the \goto{{\em Mozilla Public License}, version
+2.0}[url(https://www.mozilla.org/en-US/MPL/2.0/)] or greater. The
+documentation is additionally licensed under \goto{CC-BY-SA, version
+4.0}[url(https://creativecommons.org/licenses/by-sa/4.0/legalcode)] or
+greater.
+
+\subsection{\type{noto-emoji.pdf}}
+
+\type{noto-emoji.pdf} (\q{Noto Emoji}) was created from the
+\type{svg/} folder of
+\goto{\type{googlefonts/noto-emoji@934a5706}}[url(https://github.com/googlefonts/noto-emoji/tree/934a5706)]
+and is licensed under the \goto{{\em Apache License}, version
+2.0}[url(https://github.com/googlefonts/noto-emoji/blob/934a5706/LICENSE)].
+
+\subsection{\type{twemoji.pdf}}
+
+\type{twemoji.pdf} (\q{Twitter Emoji}) was created from the
+\type{assets/svg/} folder of
+\goto{\type{twitter/twemoji@d94f4cf7}}[url(https://github.com/twitter/twemoji/tree/d94f4cf7)]
+and is licensed under \goto{CC-BY
+4.0}[url(https://github.com/twitter/twemoji/blob/d94f4cf7/LICENSE-GRAPHICS)].
+
+\subsection{\type{fxemoji.pdf}}
+
+\type{fxemoji.pdf} (\q{FxEmojis}) was created from the
+\type{svgs/FirefoxEmoji/} folder of
+\goto{\type{mozilla/fxemoji@270af343}}[url(https://github.com/mozilla/fxemoji/tree/270af343)]
+and is licensed under \goto{CC-BY
+4.0}[url(https://github.com/mozilla/fxemoji/blob/270af343/LICENSE.md)].
+
+\subsection{\type{openmoji.pdf}}
+
+\type{openmoji.pdf} (\q{OpenMoji}) was created from the
+\type{color/svg/} folder of
+\goto{\type{hfg-gmuend/openmoji@d6d0daad}}[url(https://github.com/hfg-gmuend/openmoji/tree/d6d0daad)]
+and is licensed under \goto{CC-BY-SA
+4.0}[url(https://github.com/hfg-gmuend/openmoji/blob/d6d0daad/LICENSE.txt)].
+
+\subsection{\type{emojione.pdf}}
+
+\type{emojione.pdf} (\q{EmojiOne}) was created from the
+\type{assets/svg/} folder of
+\goto{\type{joypixels/emojione@v2.2.7}}[url(https://github.com/joypixels/emojione/tree/v2.2.7)]
+and is licensed under \goto{CC-BY
+4.0}[url(https://github.com/joypixels/emojione/blob/v2.2.7/LICENSE.md)].
 
 \page
 \setuplayout[
