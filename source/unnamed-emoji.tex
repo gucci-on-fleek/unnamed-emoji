@@ -3,42 +3,61 @@
 % SPDX-License-Identifier: MPL-2.0+
 % SPDX-FileCopyrightText: 2023 Max Chernoff
 
+% Plain TeX macros for "unnamed-emoji"
+
 \wlog{unnamed-emoji v0.0.3} %%version
 
+% Let us use make "private" macros
 \catcode`@=11
 
+% LuaTeX
 \ifdefined\directlua
+    % Using luatexbase makes LaTeX interop much easier
     \input ltluatex
+    % Make /ToUnicode work
     \pdfextension glyphtounicode{fake!}{0000}
+    % Load the Lua code
     \directlua{require "unnamed-emoji"}
 \fi
 
+% pdfTeX
 \ifdefined\pdftexversion
     \def\unemoji@print#1#2{%
-        \ifcsname emoji@#2\endcsname%
-            \pdfrefximage\csname emoji@#2\endcsname\relax%
+        % See if we've already used this emoji
+        \ifcsname emoji@#1#2\endcsname%
+            % If so, just dereference the XObject
+            \pdfrefximage\csname emoji@#1#2\endcsname\relax%
         \else%
+            % Otherwise, we first need to load page into an XObject
             \pdfximage named{emoji#2}{#1.pdf}%
-            \expandafter\chardef\csname emoji@#2\endcsname=\pdflastximage\relax%
+            % Save a reference to the XObject
+            \expandafter\mathchardef\csname emoji@#1#2\endcsname
+                =\pdflastximage\relax%
+            % And finally we can print it
             \pdfrefximage\pdflastximage\relax%
         \fi%
     }
 \fi
 
-\ifx\unemoji@print\undefined
+% XeTeX / dvipdfmx
+\ifdefined\unemoji@print\else
     \def\unemoji@print#1#2{%
-        \hbox to 10pt{%
+        \hbox to 10bp{% No metrics with dvipdfmx, so just guess 10bp
+            % Load and print the emoji, all at once
             \special{pdf:image named "emoji#2" (#1.pdf)}%
             \hss%
         }%
     }%
 \fi
 
+% Set the default emoji font
 \def\emojifont{noto-emoji}
 
+% Public command
 \def\emoji#1{%
     \unemoji@print{\emojifont}{#1}%
 }
 
+% Conclusions
 \catcode`@=12
 \endinput

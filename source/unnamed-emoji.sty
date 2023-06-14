@@ -12,40 +12,75 @@
     {v0.0.3} %%version
     {An as-of-yet unnamed emoji package}
 
-% Generate needed variants
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Generate needed variants %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \cs_generate_variant:Nn \iow_now:Nn { NV }
 \cs_generate_variant:Nn \tl_put_left:Nn { Ne }
 \cs_generate_variant:Nn \str_remove_all:Nn { NV }
 
-% Declare variables
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Declare variables %%
+%%%%%%%%%%%%%%%%%%%%%%%
+
 \prop_new:N \g__unemoji_fonts_prop
 \cs_set_eq:NN \emoji@register \use_none:nn
 
-% pdfTeX
+
+%%%%%%%%%%%%
+%% pdfTeX %%
+%%%%%%%%%%%%
 \sys_if_engine_pdftex:T {
     % Loads an emoji
     \cs_new_protected:Nn \__unemoji_load:nn {
+        % Load the page into an XForms Object
         \pdfximage named { emoji #2 } { #1 .pdf }
+
+        % Save a reference to the object
         \prop_put:cnV { g__unemoji_ #1 _prop } { #2 } \pdflastximage
-        \prop_put:NnV \g__unemoji_fonts_prop { #1 } \c_true_bool
     }
 
     % Prints an emoji
     \cs_new_protected:Nn \__unemoji_print:nn {
+        % See if we've already loaded this emoji
         \prop_get:cnNTF { g__unemoji_ #1 _prop } { #2 } \l_tmpa_tl {
+            % If we've already loaded it, just dereference the XObject
             \pdfrefximage \l_tmpa_tl \scan_stop:
         }{
+            % Otherwise, we load the emoji
             \__unemoji_load:nn { #1 } { #2 }
+
+            % Now we dereference it
             \pdfrefximage \pdflastximage \scan_stop:
+
+            % Mark that we've used this emoji
             \seq_gput_right:cn { g__unemoji_ #1 _seq } { #2 }
+            % and this font
+            \prop_put:NnV \g__unemoji_fonts_prop { #1 } \c_true_bool
         }
     }
 
-    % Save the list of used emojis to the aux file
+    % With pdfTeX, it's fast to load additional pages from a PDF that is already
+    % open, but slow to open a new PDF. pdfTeX closes any opened PDFs at the end
+    % of every page; so to speed things up, we load all the emojis at the very
+    % beginning of the document. To do so, we need to write any used emojis to
+    % the aux file, and then read them back in at the beginning of the document.
+    %
+    % On the first compile, we still include new emojis as we go. This is a
+    % little slower, but it makes the output exactly correct on the first
+    % compile.
+
+    % Save the list of used emojis to the aux file at the end of the compile
     \hook_gput_code:nnn { enddocument / afterlastpage } { unnamed-emoji } {
+        % Loop over all the used fonts
         \prop_map_inline:Nn \g__unemoji_fonts_prop {
+            % Convert the used sequence to a clist
             \clist_set_from_seq:Nc \l_tmpa_clist { g__unemoji_ #1 _seq }
 
+            % Prepend the clist with "\emoji@register{font}{"
             \tl_put_left:Ne \l_tmpa_clist {
                 \token_to_str:N \emoji@register
                 \c_left_brace_str #1 \c_right_brace_str
@@ -53,7 +88,9 @@
             }
 
             \tl_put_right:NV \l_tmpa_clist \c_right_brace_str
+            % Close off the clist with "}"
 
+            % Write out the list to the aux file
             \iow_now:NV \@auxout \l_tmpa_clist
         }
     }
@@ -64,49 +101,73 @@
             \__unemoji_load:nn { #1 } { ##1 }
         }
     }
+    % Make an alias usable with aux file catcodes
     \cs_set_eq:NN \emoji@register \__unemoji_register:nn
 }
 
-% LuaTeX
-\sys_if_engine_luatex:T {
-    \pdfextension glyphtounicode {fake!} {0000}
-    \lua_load_module:n { unnamed-emoji }
 
-    \__unemoji_load:nn { noto-emoji } { fake! }
+%%%%%%%%%%%%
+%% LuaTeX %%
+%%%%%%%%%%%%
+
+\sys_if_engine_luatex:T {
+    % LuaTeX needs us to use "\pdfextension glyphtounicode" before any font will
+    % generate a proper /ToUnicode mapping.
+    \pdfextension glyphtounicode {fake!} {0000}
+
+    % With LuaTeX, instead of including pages from the PDF in the document, we
+    % extract the font from the PDF and use those glyphs directly. This takes a
+    % lot of code and has the same effect, but it's a much more elegant
+    % solution.
+    \lua_load_module:n { unnamed-emoji }
 }
 
-% Hopefully we're using dvipdfmx...
+
+%%%%%%%%%%%%%%%%%%%%%%
+%% XeTeX / dvipdfmx %%
+%%%%%%%%%%%%%%%%%%%%%%
 \cs_if_exist:NF \__unemoji_print:nn {
     % Prints an emoji
     \cs_new_protected:Nn \__unemoji_print:nn {
+        % We remove any spaces from the emoji name so that we can use it as a
+        % dvipdfm @reference.
         \str_set:Nn \l_tmpa_str { #2 }
         \str_remove_all:NV \l_tmpa_str \c_space_tl
 
+        % See if we've already loaded this emoji
         \prop_get:cVNTF { g__unemoji_ #1 _prop } \l_tmpa_str \l_tmpa_tl {
+            % Dereference the XObject
             \hbox_to_wd:nn
-                { 10bp }
+                { 10bp } % No metrics with dvipdfmx, so we just guess 10bp
                 {
                     \special {
-                        pdf:usexobj \c_space_tl
-                        @ \l_tmpa_str
+                        pdf:usexobj \c_space_tl % command
+                        @ \l_tmpa_str           % previously-saved reference
                     }
-                    \hss
+                    \hss % Prevent over/underfull box warnings
                 }
         }{
+            % Otherwise, we simultaneously load and print the emoji
             \hbox_to_wd:nn
-                { 10bp }
+                { 10bp } % No metrics with dvipdfmx, so we just guess 10bp
                 {
                     \special{
-                        pdf:image \c_space_tl
-                        @ \l_tmpa_str \c_space_tl
-                        named ~ "emoji #2" \c_space_tl
-                        ( #1 .pdf )
+                        pdf:image \c_space_tl          % command
+                        @ \l_tmpa_str \c_space_tl      % save as this reference
+                        named ~ "emoji #2" \c_space_tl % select the page
+                        ( #1 .pdf )                    % file name
                     }
-                    \hss
+                    \hss % Prevent over/underfull box warnings
                 }
+
+            % Mark that we've used this emoji
             \prop_put:cVV { g__unemoji_ #1 _prop } \l_tmpa_str \c_true_bool
         }
     }
+
+    % dvipdfmx processes everything in a single pass, so we don't need the aux
+    % file trickery like we do with pdfTeX. Even if it took multiple passes,
+    % dvipdfmx is *fast*, so we wouldn't need it anyway.
 }
 
 % Public interface

@@ -7,16 +7,44 @@
 -- SPDX-License-Identifier: MPL-2.0+
 -- SPDX-FileCopyrightText: 2023 Max Chernoff
 
--- Constants
-local lfont = font
-local bp_to_sp <const> = tex.sp("1bp")
+-- Converts a set of SVG files into a single PDF file.
+
+-- We use the shebang at the start to allow us to run this file directly.
+--
+-- ConTeXt usually reruns a document multiple times to resolve all the
+-- references, but this document safely compiles in a single pass, so we disable
+-- this with "--once".
+--
+-- We unfortunately need to run with "--debug" to enable the debug library so
+-- that we can override some of the MP to PDF code. This isn't supported by the
+-- ConTeXt developers, but it's not like the rest of this code would be
+-- supported either.
+
+-----------------
+--- Constants ---
+-----------------
+local lfont = font -- LuaTeX font library
+
+-- Weird scaling factor that makes the "page" fit the characters correctly
 local t3_scale <const> = tex.sp("10pt") / tex.sp("1bp") / 119.5
+local bp_to_sp <const> = tex.sp("1bp")
+
+-- Raw PDF "destination" dictionary
 local dest_formatter <const> =
     string.formatters["<< /D [ %i 0 R /XYZ 0 0 null ] >>"]
 
--- Generic utility functions
+-- Set the fill/draw colour in the PDF
+local fill_draw_colour <const> =
+    string.formatters["%s RG %s rg"]
+
+
+---------------------------------
+--- Generic utility functions ---
+---------------------------------
 
 --- Extracts an upvalue from a function.
+---
+--- Uses the `debug` library.
 ---
 --- @param func function
 --- @param name string The name of the upvalue
@@ -32,7 +60,8 @@ local function get_upvalue(func, name)
     end
 end
 
---- { { "a", "b" } } --> 1, "a", "b"
+
+--- Iterator `{ { "a", "b" } } --> 1, "a", "b"`
 local function unpacked_next(t, i)
     local n, v = next(t, i)
     if type(v) == "table" then
@@ -42,7 +71,11 @@ local function unpacked_next(t, i)
     end
 end
 
+
 --- Returns the average of a table of numbers.
+---
+--- @param t table<number>
+--- @return number
 local function average(t)
     local sum = 0
     for _, v in ipairs(t) do
@@ -51,11 +84,24 @@ local function average(t)
     return sum / #t
 end
 
--- Font-specific code
-local font
+
+--------------------------
+--- Font-specific code ---
+--------------------------
+-- Each font has a different naming convention and glyph sizes, so we need some
+-- custom code for each font to normalize all this.
+
+-- The value of the `--font=<font>` command-line argument.
 local font_name <const> = document.getargument("font")
 
-if font_name == "noto" then
+-- font.get_components: function(name: string) -> table<string>
+--     Converts a filename into a table of hex-encoded Unicode codepoints.
+--
+-- font.mp_scale: number
+--     The scaling factor to apply to the MetaPost code
+local font
+
+if font_name == "noto" then -- Noto Emoji
     font = {
         get_components = function(name)
             local components <const> = {}
@@ -69,7 +115,7 @@ if font_name == "noto" then
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 128,
     }
-elseif font_name == "twemoji" then
+elseif font_name == "twemoji" then -- Twitter Emoji
     font = {
         get_components = function(name)
             local components <const> = {}
@@ -83,7 +129,7 @@ elseif font_name == "twemoji" then
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 48,
     }
-elseif font_name == "fxemoji" then
+elseif font_name == "fxemoji" then -- FxEmojis
     font = {
         get_components = function(name)
             local components <const> = {}
@@ -101,7 +147,7 @@ elseif font_name == "fxemoji" then
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 512,
     }
-elseif font_name == "openmoji" then
+elseif font_name == "openmoji" then -- OpenMoji
     font = {
         get_components = function(name)
             local components <const> = {}
@@ -115,7 +161,7 @@ elseif font_name == "openmoji" then
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 72,
     }
-elseif font_name == "emojione" then
+elseif font_name == "emojione" then -- EmojiOne
     font = {
         get_components = function(name)
             local components <const> = {}
@@ -133,42 +179,54 @@ else
     error("Unknown font: " .. font_name)
 end
 
+----------------------------
+--- Processing Functions ---
+----------------------------
+
 -- pdfLaTeX uses PDF v1.5 by default, but ConTeXt uses v1.7. Let's force
 -- v1.5 here to be safe.
 lpdf.formats.data.emoji = table.copy(lpdf.formats.default)
 lpdf.formats.data.emoji.pdf_version = 1.5
 context.setupbackend { format = "emoji" }
 
+
 -- Register the dropin method "rawpdf" to allow us to inject raw PDF code
 -- as the contents of a Type 3 glyph.
 if not lpdf.registerfontmethod then
+    -- ConTeXt LMTX contains the code to register a new font method, but it's
+    -- commented out (disabled) by default, so we need to manually edit the file
+    -- to forcibly enable it.
     error('Please uncomment "lpdf.registerfontmethod" in "lpdf-emb.lmt"!')
 end
 
+
 lpdf.registerfontmethod("rawpdf", function(filename, details)
     return
-        details.properties.indexdata[1],
-        t3_scale,
-        function(char)
+        details.properties.indexdata[1], -- Table of glyphs
+        t3_scale, -- Scale factor to export the glyph at
+        function(char) -- Code to convert the character to PDF
             return char.code, char.width / bp_to_sp
         end,
-        function() end,
-        function() end
+        function() end, -- "Reset"
+        function() end -- Add any used resources to the font dict
 end)
+
 
 --- Add the provided glyph to the current font.
 ---
---- @param codepoint integer
---- @param components table<string>
---- @param width number
---- @param height number
---- @param code string
+--- @param codepoint integer The Unicode codepoint to register
+--- @param components table<string> Codepoints to use for /ToUnicode
+--- @param width number The width of the glyph in bp's
+--- @param height number The height of the glyph in bp's
+--- @param code string The raw PDF stream to use for the glyph
 local function make_glyph(codepoint, components, width, height, code)
+    -- Convert the codepoints to integers
     local unicode = {}
     for _, component in ipairs(components) do
         unicode[#unicode+1] = tonumber(component, 16)
     end
 
+    -- Data for this glyph
     local spec <const> = {
         width   = width,
         height  = height,
@@ -176,15 +234,21 @@ local function make_glyph(codepoint, components, width, height, code)
         unicode = unicode,
         code = code,
     }
+    -- Data for the original font
     local tfmdata <const> = fonts.hashes.identifiers[lfont.current()]
 
+    -- Add the character metrics
     tfmdata.characters[codepoint] = spec
+
+    -- Add the character drawing code
     fonts.dropins.swapone(
         "rawpdf",
         tfmdata,
         { code = spec },
         codepoint
     )
+
+    -- Finally, add the character to the font
     fonts.constructors.addcharacters(
         lfont.current(),
         { characters = { [codepoint] = spec } }
@@ -197,15 +261,17 @@ end
 -- loading the PDF file quite slow. We use this questionable hack to remove
 -- any of these unwanted effects.
 utilities.sequencers.prependaction(
-    get_upvalue(metapost.installplugin, "processoractions"),
-    "system",
-    function(object, prescript, before, after)
+    get_upvalue(metapost.installplugin, "processoractions"), -- sequence
+    "system", -- group
+    function(object, prescript, before, after) -- action
+
+        -- Move the transparencies and gradients to a temporary table
         local saved <const> = {}
         for pos, name, value in unpacked_next,prescript do
-            if name:match("^tr_") then -- transparencies
+            if name:match("^tr_") then -- Transparencies
                 saved[name] = value
                 prescript[pos] = nil
-            elseif name:match("^sh_") then -- gradients
+            elseif name:match("^sh_") then -- Gradients
                 saved[name] = value
                 prescript[pos] = nil
             end
@@ -217,12 +283,14 @@ utilities.sequencers.prependaction(
             before[1] = "\n%"
             after[2] = "\n"
         elseif saved.sh_type then -- replace gradients with their average color
+            -- Individual colour components
             local rs <const> = {}
             local gs <const> = {}
             local bs <const> = {}
 
             for name, value in pairs(saved) do
                 if name:match("^sh_color_[ab]_") then
+                    -- Append each gradient stop
                     local r, g, b = value:match("(.*):(.*):(.*)")
                     rs[#rs+1] = r or value
                     gs[#gs+1] = g or value
@@ -230,22 +298,30 @@ utilities.sequencers.prependaction(
                 end
             end
 
+            -- Add the average value as a solid fill/outline
             local values <const> = string.format(
                 "%0.2f %0.2f %0.2f",
                 average(rs), average(gs), average(bs)
             )
-            before[2] = string.format("%s RG %s rg", values, values)
+            before[2] = fill_draw_colour(values, values)
         end
     end
 )
 
+
 -- Add "named destinations" for each page with the glyph name/codepoint.
+-- Automatically memoized since the `__index` metamethod only calls the function
+-- once per key.
 local dests <const> = table.setmetatableindex(function(t, k)
     local v = lpdf.delayedobject(dest_formatter(lpdf.pagereference(k)))
     t[k] = v
     return v
 end)
 
+
+--- Makes a named destination to the current page.
+---
+--- @param name string
 local function make_name(name)
     lpdf.registerdestination(
         "emoji" .. tostring(name):lower(),
@@ -253,22 +329,30 @@ local function make_name(name)
     )
 end
 
+
+-- Save the list of characters that we've processed so far so that we don't make
+-- duplicate named destinations.
 local chars <const> = {}
 
---- Process each SVG file.
+-----------------------------
+--- Process each SVG file ---
+-----------------------------
 local function process(name)
-    if file.extname(name) ~= "svg" then -- uh oh
+    if file.extname(name) ~= "svg" then -- Nothing to do here
         return
     end
 
+    -- Get the character components of the current glyph
     local components <const> = font.get_components(name)
     if #components == 0 then
         return
     end
 
-
+    -- The "primary" component
     local char <const> = components[1]
 
+    -- Each codepoint in a font can only have a single definition, so we use a
+    -- codepoint from the PUA if we have duplicates.
     local codepoint
     if not chars[char] then
         codepoint = tonumber("0x" .. char)
@@ -276,15 +360,18 @@ local function process(name)
         codepoint = fonts.helpers.sharedprivates[table.concat(components, "-")]
     end
 
+    -- SVG file contents
     local contents <const> = select(2, resolvers.loadbinfile(name))
 
+    -- ConTeXt can't process SVGs with embedded stylesheets
     if contents:match("text/css") then
         return
     end
 
-    -- Convert the SVG to Metafun
+    -- Convert the SVG to MetaPost
     local mp_code = metapost.svgtomp { data = contents }
-    -- Scale and shift the Metafun image
+
+    -- Scale and shift the MetaPost image
     mp_code = mp_code
         :gsub("clip currentpicture.-;", "interim truecorners := 1;")
         :gsub("^draw ", "picture p; p :=")
@@ -296,18 +383,18 @@ local function process(name)
 
     -- Render the Metafun image to PDF
     local pdf_code, width, height = metapost.simple(
-        "metafun",
-        mp_code,
-        true,
-        false,
-        "svg"
+        "metafun", -- "Instance"
+        mp_code, -- MP code
+        true, -- Use Metafun extensions?
+        false, -- Wrap in begfig/endfig?
+        "svg" -- Name
     )
 
     -- Clean up the PDF code
     pdf_code = pdf_code
-        :gsub("^q ", "")
+        :gsub("^q ", "") -- Remove superfluous groups
         :gsub(" Q$", "")
-        :gsub("(%d%.%d%d)%d%d%d", "%1")
+        :gsub("(%d%.%d%d)%d%d%d", "%1") -- Reduce the precision
         :gsub("(%d%.%d%d)%d%d", "%1")
         :gsub("(%d%.%d%d)%d", "%1")
 
@@ -320,7 +407,7 @@ local function process(name)
         pdf_code
     )
 
-    -- Add the destinations
+    -- Add the named destinations
     if #components == 1 and not chars[char] then
         make_name(char)
         make_name(codepoint)
@@ -331,7 +418,7 @@ local function process(name)
 
         local char_name = {}
         for _, char in pairs(components) do
-            if char ~= "200d" then
+            if char ~= "200d" then -- Zero-width joiner, ignore
                 char_name[#char_name+1] =
                     characters.data[tonumber("0x" .. char)].description
             end
@@ -357,7 +444,10 @@ luatex.wrapup(function()
 end)
 
 context.starttext()
+-- `context.stepwise` + `context.step` ensures that the Lua and TeX code run in
+-- sync.
 context.stepwise(function()
+    -- Good test files, uncomment to use
     -- process("/home/max/Downloads/noto-svg/emoji_u1faf0.svg")
     -- process("/home/max/Downloads/noto-svg/emoji_u1f986.svg")
     -- process("/home/max/Downloads/noto-svg/emoji_u1f391.svg")
