@@ -11,8 +11,5 @@
 *#
 temp*
 
-!emojione.pdf
-!fxemoji.pdf
-!noto-emoji.pdf
-!openmoji.pdf
-!twemoji.pdf
+!fonts/*.pdf
+!texmf/**.pdf

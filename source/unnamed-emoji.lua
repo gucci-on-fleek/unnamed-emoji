@@ -54,6 +54,15 @@ end
 
 -- Specialized utility functions
 
+--- Converts a filename to an absolute path.
+---
+--- @param name string A filename
+--- @return string path An absolute path to the file
+local function get_font_path(name)
+    return kpse.find_file(name .. ".pdf")
+end
+
+
 --- Creates a TeX command that evaluates a Lua function
 ---
 --- @param name string The name of the \csname to define
@@ -293,7 +302,7 @@ end)
 register_tex_cmd(
     "load",
     function(fontname)
-        token.set_char("unemojifont", load_font(fontname .. ".pdf"))
+        token.set_char("unemojifont", load_font(get_font_path(fontname)))
     end,
     { "string", "string" }
 )
@@ -301,7 +310,7 @@ register_tex_cmd(
 register_tex_cmd(
     "print",
     function(fontname, char_name)
-        fontname = fontname .. ".pdf"
+        fontname = get_font_path(fontname)
         local char = chars[fontname][char_name] or
                      chars[fontname][tostring(utf8.codepoint(char_name))]
 
