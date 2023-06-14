@@ -16,7 +16,7 @@ very polished yet, but mostly functional.
 - Supports XeLaTeX, Plain XeTeX, and `dvipdfmx` with a [patched version of
   `dvipdfmx`](dvipdfmx.patch).
 
-- Only needs a single PDF file (8.7 MB) to supply all characters. And
+- Only needs a single PDF file per font to supply all characters. And
   all the required metadata is in the PDF file itself, so no additional
   files are needed.
 
@@ -30,14 +30,15 @@ very polished yet, but mostly functional.
 
 - Adds fairly little overhead, so compile times are kept fast.
 
-- Easily extensible to include more fonts.
-
 - All characters are properly Unicode-encoded, so you can copy-and-paste
   them from your compiled documents, even with pdfTeX.
 
 - Supports ligated/composed emoji.
 
-- With Noto Emoji, supports 3458 unique emoji.
+- Currently includes Noto Emoji (3458 characters), Twemoji (3689
+  characters), FxEmoji (979 characters), OpenMoji (4094 characters), and
+  EmojiOne (1832 characters), for a total of 14 052 characters. And more
+  fonts can be easily added.
 
 ## Examples
 
@@ -50,7 +51,7 @@ very polished yet, but mostly functional.
 \begin{document}
     Duck \emoji{duck} another \emoji{1f986} again \emoji{129414}.
 
-    Manually select a font: \emoji[noto-emoji.pdf]{duck}.
+    Manually select a font: \emoji[twemoji]{duck}.
 
     % LuaTeX-only
     Duck \emoji{🦆}.
@@ -63,7 +64,7 @@ very polished yet, but mostly functional.
 
 Duck \emoji{duck} another \emoji{1f986} again \emoji{129414}.
 
-Manually select a font: {\def\emojifont{noto-emoji.pdf}\emoji{duck}}.
+Manually select a font: {\def\emojifont{twemoji}\emoji{duck}}.
 
 % LuaTeX-only
 Duck \emoji{🦆}.
@@ -80,6 +81,8 @@ Duck \emoji{🦆}.
 
 ## Generating the PDF-fonts
 
+_(Advanced users only)_
+
 Make sure that `qpdf` and ConTeXt LMTX are installed. Next, uncomment
 the definition of `lpdf.registerfontmethod` in the ConTeXt base file
 `lpdf-emb.lmt`.
@@ -87,7 +90,7 @@ the definition of `lpdf.registerfontmethod` in the ConTeXt base file
 Then, run the following command:
 
 ```sh
-./svg-to-pdf.cld --in=/path/to/svg/files/ --result=output-name
+./svg-to-pdf.cld --in=/path/to/svg/files/ --font=font --result=output-name
 ```
 
 ## Patching `dvipdfmx`
@@ -110,10 +113,39 @@ documentation is additionally licensed under [CC-BY-SA, version
 4.0](https://creativecommons.org/licenses/by-sa/4.0/legalcode) or
 greater.
 
-The file `noto-emoji.pdf` is probably licensed under the [_Apache
-License_, version
-2.0](https://github.com/googlefonts/noto-emoji/blob/934a570/LICENSE),
-but it might be licenced under the [_SIL Open Font License_, version
-1.1](https://github.com/googlefonts/noto-emoji/blob/934a570/fonts/LICENSE).
-The situation is a little ambiguous, but either licence should be
-permissive enough for most situations.
+### `noto-emoji.pdf`
+
+`noto-emoji.pdf` (“Noto Emoji”) was created from the `svg/` folder of
+[`googlefonts/noto-emoji@934a5706`](https://github.com/googlefonts/noto-emoji/tree/934a5706)
+and is licensed under the [_Apache License_, version
+2.0](https://github.com/googlefonts/noto-emoji/blob/934a5706/LICENSE).
+
+### `twemoji.pdf`
+
+`twemoji.pdf` (“Twitter Emoji”) was created from the `assets/svg/`
+folder of
+[`twitter/twemoji@d94f4cf7`](https://github.com/twitter/twemoji/tree/d94f4cf7)
+and is licensed under [CC-BY
+4.0](https://github.com/twitter/twemoji/blob/d94f4cf7/LICENSE-GRAPHICS).
+
+### `fxemoji.pdf`
+
+`fxemoji.pdf` (“FxEmojis”) was created from the `svgs/FirefoxEmoji/`
+folder of
+[`mozilla/fxemoji@270af343`](https://github.com/mozilla/fxemoji/tree/270af343)
+and is licensed under [CC-BY
+4.0](https://github.com/mozilla/fxemoji/blob/270af343/LICENSE.md).
+
+### `openmoji.pdf`
+
+`openmoji.pdf` (“OpenMoji”) was created from the `color/svg/` folder of
+[`hfg-gmuend/openmoji@d6d0daad`](https://github.com/hfg-gmuend/openmoji/tree/d6d0daad)
+and is licensed under [CC-BY-SA
+4.0](https://github.com/hfg-gmuend/openmoji/blob/d6d0daad/LICENSE.txt).
+
+### `emojione.pdf`
+
+`emojione.pdf` (“EmojiOne”) was created from the `assets/svg/` folder of
+[`joypixels/emojione@v2.2.7`](https://github.com/joypixels/emojione/tree/v2.2.7)
+and is licensed under [CC-BY
+4.0](https://github.com/joypixels/emojione/blob/v2.2.7/LICENSE.md).

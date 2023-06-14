@@ -3,7 +3,7 @@
 % SPDX-License-Identifier: MPL-2.0+
 % SPDX-FileCopyrightText: 2023 Max Chernoff
 
-\wlog{unnamed-emoji v0.0.2} %%version
+\wlog{unnamed-emoji v0.0.3} %%version
 
 \catcode`@=11
 
@@ -11,7 +11,6 @@
     \input ltluatex
     \pdfextension glyphtounicode{fake!}{0000}
     \directlua{require "unnamed-emoji"}
-    \unemoji@load{noto-emoji.pdf}{fake!}
 \fi
 
 \ifdefined\pdftexversion
@@ -19,7 +18,7 @@
         \ifcsname emoji@#2\endcsname%
             \pdfrefximage\csname emoji@#2\endcsname\relax%
         \else%
-            \pdfximage named{emoji#2}{#1}%
+            \pdfximage named{emoji#2}{#1.pdf}%
             \expandafter\chardef\csname emoji@#2\endcsname=\pdflastximage\relax%
             \pdfrefximage\pdflastximage\relax%
         \fi%
@@ -29,13 +28,13 @@
 \ifx\unemoji@print\undefined
     \def\unemoji@print#1#2{%
         \hbox to 10pt{%
-            \special{pdf:image named "emoji#2" (#1)}%
+            \special{pdf:image named "emoji#2" (#1.pdf)}%
             \hss%
         }%
     }%
 \fi
 
-\def\emojifont{noto-emoji.pdf}
+\def\emojifont{noto-emoji}
 
 \def\emoji#1{%
     \unemoji@print{\emojifont}{#1}%

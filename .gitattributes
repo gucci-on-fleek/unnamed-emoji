@@ -1,0 +1,7 @@
+# unnamed-emoji
+# https://github.com/gucci-on-fleek/unnamed-emoji
+# SPDX-License-Identifier: MPL-2.0+
+# SPDX-FileCopyrightText: 2023 Max Chernoff
+* text text=auto eol=lf
+*.pdf merge=binary -diff -text
+*.cld linguist-language=lua

@@ -196,21 +196,30 @@ local chars = memoized_table(function(filename)
                 1
             )
             font = select(2, getfromreference(font))
-            local slot = tonumber(page.Contents(true):match("<(..)>"), 16)
+            local info = {}
+            pdfscanner.scan(page.Contents(true), {
+                TJ = function(scanner, info)
+                    info.slot = scanner:pop()[2][1][2]
+                end
+            }, info)
 
-            local char = {
-                inner_fontname = fontname,
-                inner_slot = slot,
-                char_obj = font.CharProcs["I" .. slot],
-                width = font.Widths[slot + 1],
-                codepoint = tonumber(name),
-            }
+            if info.slot and #info.slot == 1 then
+                local slot = string.byte(info.slot)
 
-            pdf_font[name] = char
-            dests[dest_key] = char
+                local char = {
+                    inner_fontname = fontname,
+                    inner_slot = slot,
+                    char_obj = font.CharProcs["I" .. slot],
+                    width = font.Widths[slot + 1],
+                    codepoint = tonumber(name),
+                }
 
-            by_font[fontname] = by_font[fontname] or {}
-            by_font[fontname][slot] = char
+                pdf_font[name] = char
+                dests[dest_key] = char
+
+                by_font[fontname] = by_font[fontname] or {}
+                by_font[fontname][slot] = char
+            end
         end
     end
 
@@ -284,7 +293,7 @@ end)
 register_tex_cmd(
     "load",
     function(fontname)
-        token.set_char("unemojifont", load_font(fontname))
+        token.set_char("unemojifont", load_font(fontname .. ".pdf"))
     end,
     { "string", "string" }
 )
@@ -292,6 +301,7 @@ register_tex_cmd(
 register_tex_cmd(
     "print",
     function(fontname, char_name)
+        fontname = fontname .. ".pdf"
         local char = chars[fontname][char_name] or
                      chars[fontname][tostring(utf8.codepoint(char_name))]
 

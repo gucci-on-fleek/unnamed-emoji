@@ -8,8 +8,8 @@
 
 \ProvidesExplPackage
     {unnamed-emoji}
-    {2023/06/12} %%slashdate
-    {v0.0.2} %%version
+    {2023/06/13} %%slashdate
+    {v0.0.3} %%version
     {An as-of-yet unnamed emoji package}
 
 % Generate needed variants
@@ -18,50 +18,53 @@
 \cs_generate_variant:Nn \str_remove_all:Nn { NV }
 
 % Declare variables
-\prop_new:N \g__unemoji_used_prop
-\seq_new:N \g__unemoji_used_seq
-
-\cs_set_eq:NN \emoji@register \use_none:n
+\prop_new:N \g__unemoji_fonts_prop
+\cs_set_eq:NN \emoji@register \use_none:nn
 
 % pdfTeX
 \sys_if_engine_pdftex:T {
     % Loads an emoji
     \cs_new_protected:Nn \__unemoji_load:nn {
-        \pdfximage named { emoji #2 } { #1 }
-        \prop_put:NnV \g__unemoji_used_prop { #2 } \pdflastximage
+        \pdfximage named { emoji #2 } { #1 .pdf }
+        \prop_put:cnV { g__unemoji_ #1 _prop } { #2 } \pdflastximage
+        \prop_put:NnV \g__unemoji_fonts_prop { #1 } \c_true_bool
     }
 
     % Prints an emoji
     \cs_new_protected:Nn \__unemoji_print:nn {
-        \prop_get:NnNTF \g__unemoji_used_prop { #2 } \l_tmpa_tl {
+        \prop_get:cnNTF { g__unemoji_ #1 _prop } { #2 } \l_tmpa_tl {
             \pdfrefximage \l_tmpa_tl \scan_stop:
         }{
             \__unemoji_load:nn { #1 } { #2 }
             \pdfrefximage \pdflastximage \scan_stop:
-            \seq_gput_right:Nn \g__unemoji_used_seq { #2 }
+            \seq_gput_right:cn { g__unemoji_ #1 _seq } { #2 }
         }
     }
 
     % Save the list of used emojis to the aux file
     \hook_gput_code:nnn { enddocument / afterlastpage } { unnamed-emoji } {
-        \clist_set_from_seq:NN \l_tmpa_clist \g__unemoji_used_seq
+        \prop_map_inline:Nn \g__unemoji_fonts_prop {
+            \clist_set_from_seq:Nc \l_tmpa_clist { g__unemoji_ #1 _seq }
 
-        \tl_put_left:Ne \l_tmpa_clist {
-            \token_to_str:N \emoji@register \c_left_brace_str
+            \tl_put_left:Ne \l_tmpa_clist {
+                \token_to_str:N \emoji@register
+                \c_left_brace_str #1 \c_right_brace_str
+                \c_left_brace_str
+            }
+
+            \tl_put_right:NV \l_tmpa_clist \c_right_brace_str
+
+            \iow_now:NV \@auxout \l_tmpa_clist
         }
-
-        \tl_put_right:NV \l_tmpa_clist \c_right_brace_str
-
-        \iow_now:NV \@auxout \l_tmpa_clist
     }
 
     % Preload the used emojis from the aux file
-    \cs_new_protected:Nn \__unemoji_register:n {
-        \clist_map_inline:nn { #1 } {
-            \__unemoji_load:nn { noto-emoji.pdf } { ##1 }
+    \cs_new_protected:Nn \__unemoji_register:nn {
+        \clist_map_inline:nn { #2 } {
+            \__unemoji_load:nn { #1 } { ##1 }
         }
     }
-    \cs_set_eq:NN \emoji@register \__unemoji_register:n
+    \cs_set_eq:NN \emoji@register \__unemoji_register:nn
 }
 
 % LuaTeX
@@ -69,7 +72,7 @@
     \pdfextension glyphtounicode {fake!} {0000}
     \lua_load_module:n { unnamed-emoji }
 
-    \__unemoji_load:nn { noto-emoji.pdf } { fake! }
+    \__unemoji_load:nn { noto-emoji } { fake! }
 }
 
 % Hopefully we're using dvipdfmx...
@@ -79,7 +82,7 @@
         \str_set:Nn \l_tmpa_str { #2 }
         \str_remove_all:NV \l_tmpa_str \c_space_tl
 
-        \prop_get:NVNTF \g__unemoji_used_prop \l_tmpa_str \l_tmpa_tl {
+        \prop_get:cVNTF { g__unemoji_ #1 _prop } \l_tmpa_str \l_tmpa_tl {
             \hbox_to_wd:nn
                 { 10bp }
                 {
@@ -97,17 +100,17 @@
                         pdf:image \c_space_tl
                         @ \l_tmpa_str \c_space_tl
                         named ~ "emoji #2" \c_space_tl
-                        ( #1 )
+                        ( #1 .pdf )
                     }
                     \hss
                 }
-            \prop_put:NVV \g__unemoji_used_prop \l_tmpa_str \c_true_bool
+            \prop_put:cVV { g__unemoji_ #1 _prop } \l_tmpa_str \c_true_bool
         }
     }
 }
 
 % Public interface
-\NewDocumentCommand { \emoji } { O{noto-emoji.pdf} m } {
+\NewDocumentCommand { \emoji } { O{noto-emoji} m } {
     \__unemoji_print:nn { #1 } { #2 }
 }
 

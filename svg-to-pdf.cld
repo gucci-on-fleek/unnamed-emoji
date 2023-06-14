@@ -8,8 +8,9 @@
 -- SPDX-FileCopyrightText: 2023 Max Chernoff
 
 -- Constants
-local bp_to_sp <const> = tex.sp("1bp") * 0.93
-local scale <const> = tex.sp("10pt") / tex.sp("1bp") / 128
+local lfont = font
+local bp_to_sp <const> = tex.sp("1bp")
+local t3_scale <const> = tex.sp("10pt") / tex.sp("1bp") / 119.5
 local dest_formatter <const> =
     string.formatters["<< /D [ %i 0 R /XYZ 0 0 null ] >>"]
 
@@ -50,6 +51,88 @@ local function average(t)
     return sum / #t
 end
 
+-- Font-specific code
+local font
+local font_name <const> = document.getargument("font")
+
+if font_name == "noto" then
+    font = {
+        get_components = function(name)
+            local components <const> = {}
+            name = file.nameonly(name)
+            for char in name:match("emoji_u(.*)$"):gmatch("[^_]+") do
+                components[#components+1] = char
+            end
+
+            return components
+        end,
+
+        mp_scale = tex.sp("10pt") / tex.sp("1bp") / 128,
+    }
+elseif font_name == "twemoji" then
+    font = {
+        get_components = function(name)
+            local components <const> = {}
+            name = file.nameonly(name)
+            for char in name:gmatch("[^-]+") do
+                components[#components+1] = char
+            end
+
+            return components
+        end,
+
+        mp_scale = tex.sp("10pt") / tex.sp("1bp") / 48,
+    }
+elseif font_name == "fxemoji" then
+    font = {
+        get_components = function(name)
+            local components <const> = {}
+            name = file.nameonly(name):match("u(%x*)%-")
+            if not name then
+                return {}
+            end
+
+            for char in name:gmatch("[^-]+") do
+                components[#components+1] = char:lower()
+            end
+
+            return components
+        end,
+
+        mp_scale = tex.sp("10pt") / tex.sp("1bp") / 512,
+    }
+elseif font_name == "openmoji" then
+    font = {
+        get_components = function(name)
+            local components <const> = {}
+            name = file.nameonly(name)
+            for char in name:gmatch("[^-]+") do
+                components[#components+1] = char:lower()
+            end
+
+            return components
+        end,
+
+        mp_scale = tex.sp("10pt") / tex.sp("1bp") / 72,
+    }
+elseif font_name == "emojione" then
+    font = {
+        get_components = function(name)
+            local components <const> = {}
+            name = file.nameonly(name)
+            for char in name:gmatch("[^-]+") do
+                components[#components+1] = char
+            end
+
+            return components
+        end,
+
+        mp_scale = tex.sp("10pt") / tex.sp("1bp") / 74,
+    }
+else
+    error("Unknown font: " .. font_name)
+end
+
 -- pdfLaTeX uses PDF v1.5 by default, but ConTeXt uses v1.7. Let's force
 -- v1.5 here to be safe.
 lpdf.formats.data.emoji = table.copy(lpdf.formats.default)
@@ -65,7 +148,7 @@ end
 lpdf.registerfontmethod("rawpdf", function(filename, details)
     return
         details.properties.indexdata[1],
-        scale,
+        t3_scale,
         function(char)
             return char.code, char.width / bp_to_sp
         end,
@@ -76,18 +159,24 @@ end)
 --- Add the provided glyph to the current font.
 ---
 --- @param codepoint integer
+--- @param components table<string>
 --- @param width number
 --- @param height number
 --- @param code string
-local function make_glyph(codepoint, width, height, code)
+local function make_glyph(codepoint, components, width, height, code)
+    local unicode = {}
+    for _, component in ipairs(components) do
+        unicode[#unicode+1] = tonumber(component, 16)
+    end
+
     local spec <const> = {
         width   = width,
         height  = height,
         depth   = 0,
-        unicode = codepoint,
+        unicode = unicode,
         code = code,
     }
-    local tfmdata <const> = fonts.hashes.identifiers[font.current()]
+    local tfmdata <const> = fonts.hashes.identifiers[lfont.current()]
 
     tfmdata.characters[codepoint] = spec
     fonts.dropins.swapone(
@@ -97,7 +186,7 @@ local function make_glyph(codepoint, width, height, code)
         codepoint
     )
     fonts.constructors.addcharacters(
-        font.current(),
+        lfont.current(),
         { characters = { [codepoint] = spec } }
     )
 end
@@ -151,8 +240,6 @@ utilities.sequencers.prependaction(
 )
 
 -- Add "named destinations" for each page with the glyph name/codepoint.
-local pageno = 0
-
 local dests <const> = table.setmetatableindex(function(t, k)
     local v = lpdf.delayedobject(dest_formatter(lpdf.pagereference(k)))
     t[k] = v
@@ -160,7 +247,10 @@ local dests <const> = table.setmetatableindex(function(t, k)
 end)
 
 local function make_name(name)
-    lpdf.registerdestination("emoji" .. name, dests[pageno])
+    lpdf.registerdestination(
+        "emoji" .. tostring(name):lower(),
+        dests[tex.count.realpageno]
+    )
 end
 
 local chars <const> = {}
@@ -171,12 +261,11 @@ local function process(name)
         return
     end
 
-    local components <const> = {}
-    for char in file.nameonly(name):match("emoji_u(.*)$"):gmatch("[^_]+") do
-        if char ~= "200d" then
-            components[#components+1] = char
-        end
+    local components <const> = font.get_components(name)
+    if #components == 0 then
+        return
     end
+
 
     local char <const> = components[1]
 
@@ -189,13 +278,21 @@ local function process(name)
 
     local contents <const> = select(2, resolvers.loadbinfile(name))
 
+    if contents:match("text/css") then
+        return
+    end
+
     -- Convert the SVG to Metafun
     local mp_code = metapost.svgtomp { data = contents }
     -- Scale and shift the Metafun image
     mp_code = mp_code
-        :gsub("clip currentpicture.-;", "")
+        :gsub("clip currentpicture.-;", "interim truecorners := 1;")
         :gsub("^draw ", "picture p; p :=")
-        :gsub(";%s*$", "; p := p shifted -llcorner p; draw p scaled " .. scale .. ";")
+        :gsub(
+            ";%s*$",
+            "; p := p shifted -llcorner p; draw p scaled " ..
+             font.mp_scale .. " ;"
+        )
 
     -- Render the Metafun image to PDF
     local pdf_code, width, height = metapost.simple(
@@ -217,25 +314,27 @@ local function process(name)
     -- Add the glyph to the font
     make_glyph(
         codepoint,
+        components,
         width * bp_to_sp,
         height * bp_to_sp,
         pdf_code
     )
 
     -- Add the destinations
-    pageno = pageno + 1
     if #components == 1 and not chars[char] then
         make_name(char)
         make_name(codepoint)
-        make_name(characters.data[codepoint].description:lower())
+        make_name(characters.data[codepoint].description)
     else
         make_name(table.concat(components, "-"))
         make_name(codepoint)
 
         local char_name = {}
         for _, char in pairs(components) do
-            char_name[#char_name+1] =
-                characters.data[tonumber("0x" .. char)].description:lower()
+            if char ~= "200d" then
+                char_name[#char_name+1] =
+                    characters.data[tonumber("0x" .. char)].description
+            end
         end
         make_name(table.concat(char_name, " "))
     end
@@ -246,6 +345,7 @@ local function process(name)
     context.startTEXpage()
     context.verbatim(utf8.char(codepoint))
     context.stopTEXpage()
+    context.step()
 end
 
 -- Compress and linearize the PDF when we're done
@@ -261,6 +361,12 @@ context.stepwise(function()
     -- process("/home/max/Downloads/noto-svg/emoji_u1faf0.svg")
     -- process("/home/max/Downloads/noto-svg/emoji_u1f986.svg")
     -- process("/home/max/Downloads/noto-svg/emoji_u1f391.svg")
+    -- process("/home/max/Downloads/noto-svg/emoji_u1f469_1f3ff_200d_2764_200d_1f48b_200d_1f468_1f3fb.svg")
+    -- process("/home/max/Downloads/twemoji/1f986.svg")
+    -- process("/home/max/Downloads/twemoji/1f638.svg")
+    -- process("/home/max/Downloads/fxemoji/FirefoxEmoji/u1F55C-clock1thirty.svg")
+    -- process("/home/max/Downloads/openmoji/1F986.svg")
+    -- process("/home/max/Downloads/emojione/1f986.svg")
 
     -- Process each SVG file in the input directory
     dir.globpattern(document.getargument("in"), "**.svg", false, process)
