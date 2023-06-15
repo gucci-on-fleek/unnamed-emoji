@@ -5,3 +5,4 @@
 * text text=auto eol=lf
 *.pdf merge=binary -diff -text
 *.cld linguist-language=lua
+*.mkxl linguist-language=tex

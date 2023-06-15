@@ -1,0 +1,185 @@
+% unnamed-emoji
+% https://github.com/gucci-on-fleek/unnamed-emoji
+% SPDX-License-Identifier: MPL-2.0+
+% SPDX-FileCopyrightText: 2023 Max Chernoff
+
+\startenvironment[unemoji-manual]
+\unprotect
+
+\startluacode
+-- Preprocess the buffers to give nice results
+interfaces.implement {
+    name = "preprocesslatexbuffers",
+    public = true,
+    actions = function()
+        local latex = buffers.raw("latex")
+        buffers.assign("code", latex)
+
+        local pre = tokens.getters.macro("latexprebuffer")
+        local post = tokens.getters.macro("latexpostbuffer")
+
+        if pre then
+            latex = buffers.raw(pre) .. "\n" .. latex
+        end
+
+        if post then
+            latex = latex .. "\n" .. buffers.raw(post)
+        end
+
+        latex = latex:gsub(
+            "\\documentclass{.-}",
+            "\\documentclass[border=1pt]{standalone}"
+        )
+
+        buffers.assign("latex", latex)
+    end,
+}
+
+sandbox.registerrunner {
+    name     = "lualatex",
+    program  = "lualatex",
+    method   = "execute",
+    template = "%filename%",
+    checkers = {
+        filename = "readable",
+        path     = "string",
+    }
+}
+
+sandbox.registerrunner {
+    name     = "pdftex",
+    program  = "pdftex",
+    method   = "execute",
+    template = "%filename%",
+    checkers = {
+        filename = "readable",
+        path     = "string",
+    }
+}
+\stopluacode
+
+
+% Define the frame-drawing command
+\startMPcode
+def drawframe (expr p) =
+    draw p withpen pencircle scaled 1mm dashed dashpattern(on 0pt off 4mm) withcolor 0.7white;
+    draw p withpen pencircle scaled 1mm dashed dashpattern(off 2mm on 0pt off 2mm) withcolor 0.3white;
+    setbounds currentpicture to boundingbox OverlayBox;
+enddef;
+\stopMPcode
+
+
+% Full rounded frame
+\startuniqueMPgraphic{outputframe}
+path p;
+p := roundedsquare(OverlayWidth, OverlayHeight, 0.25cm);
+drawframe(p);
+\stopuniqueMPgraphic
+\defineoverlay[outputframe][\useMPgraphic{outputframe}]
+
+
+% Middle divider line
+\startuniqueMPgraphic{divider}
+path p;
+p := (OverlayWidth - 0.25cm, -0.17cm)
+        -- (OverlayWidth - 0.25cm, OverlayHeight + 0.17cm);
+drawframe(p);
+\stopuniqueMPgraphic
+\defineoverlay[divider][\useMPgraphic{divider}]
+
+
+% Parameter helpers
+\def\docopyexpanded#1#2#3{%
+    \expandafter\let\expandafter\tmp\csname#2#3\endcsname%
+    \gletcsname#1#3\endcsname\tmp%
+}
+
+
+\protected\def\copyexpandedparameters[#1]#*[#2]#*[#3]{{%
+    \def\syst_helpers_copy_parameter{\docopyexpanded{#1}{#2}}%
+    \processcommalist[#3]\syst_helpers_copy_parameter%
+}}
+
+
+% Set up the default parameters
+\getparameters[latexdefault][
+    engine=lualatex,
+    figureparams={maxheight=2\baselineskip, width=0.29\textwidth},
+    prebuffer=_latexpre,
+    postbuffer=_latexpost,
+]
+
+
+% Default preamble
+\startbuffer[_latexpre]
+\documentclass[border=1pt]{standalone}
+\usepackage{unnamed-emoji}
+\begin{document}
+\stopbuffer
+
+
+% Default postamble
+\startbuffer[_latexpost]
+\end{document}
+\stopbuffer
+
+
+% The latex environment
+\tolerant\def\startlatex[#1]{%
+    \copyexpandedparameters[latex][latexdefault][
+        engine,
+        figureparams,
+        prebuffer,
+        postbuffer,
+    ]%
+    \getparameters[latex][#1]%
+    \grabbufferdata[latex][startlatex][stoplatex]%
+}
+
+
+\def\stoplatex{%
+    \preprocesslatexbuffers%
+    \runbuffer[latex][\latexengine]%
+    \outputframe{\lasttypesetbuffer}%
+    \spac_indentation_variant_no%
+}
+
+
+% Drawing helper
+\def\print_figure#1#2{
+    \externalfigure[#2][
+        factor=fit,
+        maxwidth=\dimexpr 0.29\textwidth,
+        #1
+    ]
+}
+
+
+% Drawing command for the code/output
+\define[1]\outputframe{
+    \startframedtext[
+        background=outputframe,
+        width=fit,
+        align=flushleft,
+        frame=off,
+        height=fit,
+        offset=1ex,
+    ]
+        \setupTABLE[c][1][width=0.65\textwidth, background=divider]
+        \setupTABLE[c][2][width=0.30\textwidth]
+        \startTABLE[offset=0pt, frame=off, align=top]
+        \NC \setupbodyfont[9.5pt]
+            \typeTEXbuffer[code]
+
+        \NC \expandafter\print_figure\expandafter{\latexfigureparams}{#1}
+
+        \NC\NR
+        \stopTABLE
+    \stopframedtext
+}
+
+% URL Formatting
+\setupinteraction[style=\tf]
+
+\protect
+\stopenvironment

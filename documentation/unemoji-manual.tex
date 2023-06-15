@@ -8,9 +8,14 @@
     \errmessage{Fatal error, exiting.}
 }
 
-% From <texmf-dist/source/luatex/lua-widow-control/lwc-manual.mkxl>
-% or <https://raw.githubusercontent.com/gucci-on-fleek/lua-widow-control/master/docs/manual/lwc-manual.mkxl>
+% Get from either of
+%     <texmf-dist/source/luatex/lua-widow-control/lwc-manual.mkxl>
+%     <https://raw.githubusercontent.com/gucci-on-fleek/lua-widow-control/master/docs/manual/lwc-manual.mkxl>
 \environment lwc-manual
+
+\environment unemoji-manual
+
+\usemodule[scite]
 
 % Abbreviations
 \def\unemoji/{\sans{unnamed-emoji}}
@@ -18,157 +23,6 @@
 \useURL[projecturl][https://github.com/gucci-on-fleek/unnamed-emoji]
 \let\q=\quotation
 
-% Define the example snippets
-\usemodule[scite]
-
-\startluacode
-
-    -- Always use document class standalone for the demos
-    interfaces.implement {
-        name = "fixbuffers",
-        public = true,
-        actions = function()
-            local buff = buffers.raw("latex")
-            local preamble = buffers.raw("preamble")
-            buffers.assign("preamble", "")
-            buffers.assign("code", buff)
-            buffers.assign("latex", preamble .. buff:gsub("\\documentclass{.-}", "\\documentclass[border=1pt]{standalone}"))
-        end,
-    }
-
-    -- Let us use snippets instead of complete documents
-    interfaces.implement {
-        name = "buffersnippet",
-        public = true,
-        actions = function()
-            local buff = buffers.raw("latex")
-            buffers.assign("code", buff)
-            buffers.assign(
-                "latex",
-                "\\documentclass[border=1pt]{standalone}" ..
-                "\\usepackage{unnamed-emoji}" ..
-                "\\begin{document}" ..
-                buff ..
-                "\n\\end{document}"
-            )
-        end,
-    }
-
-    sandbox.registerrunner {
-        name     = "latex",
-        program  = "lualatex",
-        method   = "execute",
-        template = "%filename%",
-        checkers = {
-            filename = "readable",
-            path     = "string",
-        }
-    }
-
-    sandbox.registerrunner {
-        name     = "plain",
-        program  = "pdftex",
-        method   = "execute",
-        template = "%filename%",
-        checkers = {
-            filename = "readable",
-            path     = "string",
-        }
-    }
-\stopluacode
-
-% Define the frame-drawing command
-\startMPcode
-    def drawframe (expr p) =
-        draw p withpen pencircle scaled 1mm dashed dashpattern(on 0pt off 4mm) withcolor 0.7white;
-        draw p withpen pencircle scaled 1mm dashed dashpattern(off 2mm on 0pt off 2mm) withcolor 0.3white;
-        setbounds currentpicture to boundingbox OverlayBox;
-    enddef;
-\stopMPcode
-
-% Full rounded frame
-\startuniqueMPgraphic{outputframe}
-    path p;
-    p := roundedsquare(OverlayWidth, OverlayHeight, 0.25cm);
-    drawframe(p);
-\stopuniqueMPgraphic
-\defineoverlay[outputframe][\useMPgraphic{outputframe}]
-
-% Middle divider line
-\startuniqueMPgraphic{divider}
-    path p;
-    p := (OverlayWidth - 0.25cm, -0.17cm)
-         -- (OverlayWidth - 0.25cm, OverlayHeight + 0.17cm);
-    drawframe(p);
-\stopuniqueMPgraphic
-\defineoverlay[divider][\useMPgraphic{divider}]
-
-\unprotect
-% Define the full drawing command
-\define[2]\outputframe{
-    \startframedtext[
-        background=outputframe,
-        width=fit,
-        align=flushleft,
-        frame=off,
-        height=fit,
-        offset=1ex,
-    ]
-        \setupTABLE[c][1][width=0.65\textwidth, background=divider]
-        \setupTABLE[c][2][width=0.30\textwidth]
-        \startTABLE[offset=0pt, frame=off, align=top]
-        \NC \setupbodyfont[9.5pt]
-            \typeTEXbuffer[code]
-
-        \NC \externalfigure[#1][
-            factor=fit,
-            maxwidth=\dimexpr 0.29\textwidth,
-            #2
-        ]
-
-        \NC\NR
-        \stopTABLE
-    \stopframedtext
-}
-
-% Full document commands
-\def\extrafigureparams{maxheight=2\baselineskip,width=0.29\textwidth,}
-
-\define\startlatex{%
-    \grabbufferdata[latex][startlatex][stoplatex]%
-}
-
-\def\stoplatex{%
-    \fixbuffers%
-    \runbuffer[latex][latex]%
-    \normalexpanded{\noexpand\outputframe{\lasttypesetbuffer}{\extrafigureparams}}%
-    \spac_indentation_variant_no%
-}
-
-% Snippet commands
-\define\startlatexsnippet{%
-    \grabbufferdata[latex][startlatexsnippet][stoplatexsnippet]%
-}
-
-\def\stoplatexsnippet{%
-    \buffersnippet%
-    \runbuffer[latex][latex]%
-    \normalexpanded{\noexpand\outputframe{\lasttypesetbuffer}{\extrafigureparams}}%
-    \spac_indentation_variant_no%
-}%
-
-% Plain
-\define\startplain{%
-    \grabbufferdata[latex][startplain][stopplain]%
-}
-
-\def\stopplain{%
-    \fixbuffers%
-    \runbuffer[latex][plain]%
-    \normalexpanded{\noexpand\outputframe{\lasttypesetbuffer}{\extrafigureparams}}%
-    \spac_indentation_variant_no%
-}
-\protect
 
 \startdocument[
     title=unnamed-emoji,
@@ -187,7 +41,7 @@ natively supports \pdfTeX{} and \LuaTeX{}, and can support \XeTeX{} and
 \section{Loading}
 
 \subsection{\LaTeX{}}
-\startlatex
+\startlatex[prebuffer=, postbuffer=]
 \documentclass{article}
 
 \usepackage{unnamed-emoji}
@@ -198,47 +52,46 @@ natively supports \pdfTeX{} and \LuaTeX{}, and can support \XeTeX{} and
 \stoplatex
 
 \subsection{Plain \TeX{}}
-\startbuffer[preamble]
+\startbuffer[pre]
 \pdfhorigin=0in
 \pdfvorigin=0in
 \pdfpagewidth=1em
 \pdfpageheight=\baselineskip
 \parindent=0pt
 \stopbuffer
-\startplain
+
+\startlatex[engine=pdftex,prebuffer=pre]
 \input unnamed-emoji
 
 \emoji{duck}
 \bye
-\stopplain
+\stoplatex
 
 \section{Input Formats}
 
 \subsection{Name}
-\startlatexsnippet
+\startlatex[]
 \emoji{duck}
-\stoplatexsnippet
+\stoplatex
 
 \subsection{Hexadecimal}
-\startlatexsnippet
+\startlatex[]
 \emoji{1f986}
-\stoplatexsnippet
+\stoplatex
 
 \subsection{Decimal}
-\startlatexsnippet
+\startlatex[]
 \emoji{129414}
-\stoplatexsnippet
+\stoplatex
 
 \subsection{Unicode}
-\startlatexsnippet
+\startlatex[]
 \emoji{🦆}  % LuaTeX Only!
-\stoplatexsnippet
+\stoplatex
 
 \section{Font Selection}
 \subsection{\LaTeX{}}
-\begingroup
-\def\extrafigureparams{width=0.29\textwidth}
-\startlatexsnippet
+\startlatex[figureparams={width=0.29\textwidth}]
 \begin{tabular}{r@{: }l}
     \texttt{noto-emoji} &
     \emoji[noto-emoji]{1f638} \\
@@ -255,21 +108,28 @@ natively supports \pdfTeX{} and \LuaTeX{}, and can support \XeTeX{} and
     \texttt{emojione} &
     \emoji[emojione]{1f638} \\
 \end{tabular}
-\stoplatexsnippet
-\endgroup
+\stoplatex
 
 \subsection{Plain \TeX{}}
-\begingroup
-\def\extrafigureparams{width=0.29\textwidth}
-\startbuffer[preamble]
+\startbuffer[pre]
 \pdfhorigin=0in
 \pdfvorigin=0in
 \pdfpagewidth=1.2in
 \pdfpageheight=6\baselineskip
 \parindent=0pt
-\stopbuffer
-\startplain
 \input unnamed-emoji
+\stopbuffer
+
+\startbuffer[post]
+\bye
+\stopbuffer
+
+\startlatex[
+    engine=pdftex,
+    prebuffer=pre,
+    postbuffer=post,
+    figureparams={width=0.29\textwidth}
+]
 \halign{\hfil\tt#\unskip:&#\hfil\cr
     noto-emoji &
     \def\emojifont{noto-emoji}
@@ -291,72 +151,69 @@ natively supports \pdfTeX{} and \LuaTeX{}, and can support \XeTeX{} and
     \def\emojifont{emojione}
     \emoji{1f638} \cr
 }
-\bye
-\stopplain
-\endgroup
+\stoplatex
 
 \section{Composed Emoji}
 
 \subsection{Name}
-\startlatexsnippet
+\startlatex[]
 \emoji[twemoji]
   {regional indicator symbol letter c
    regional indicator symbol letter a}
-\stoplatexsnippet
+\stoplatex
 
 \subsection{Hexadecimal}
-\startlatexsnippet
+\startlatex[]
 \emoji[twemoji]{1f1e8-1f1e6}
-\stoplatexsnippet
+\stoplatex
 
 \section{Licence}
 
-Most files should list their licence near the top. In general, the code
-is licensed under the \goto{{\em Mozilla Public License}, version
-2.0}[url(https://www.mozilla.org/en-US/MPL/2.0/)] or greater. The
-documentation is additionally licensed under \goto{CC-BY-SA, version
-4.0}[url(https://creativecommons.org/licenses/by-sa/4.0/legalcode)] or
-greater.
+Most files should list their licence near the top. In general, the code is
+licensed under the \goto{{\em Mozilla Public License}, version
+2.0}[url(https://www.mozilla.org/en-US/MPL/2.0/)] or greater. The documentation
+is additionally licensed under \goto{\acronym{CC-BY-SA}, version
+4.0}[url(https://creativecommons.org/licenses/by-sa/4.0/legalcode)] or greater.
 
-\subsection{\type{noto-emoji.pdf}}
+\subsection{Noto Emoji}
 
-\type{noto-emoji.pdf} (\q{Noto Emoji}) was created from the
-\type{svg/} folder of
-\goto{\type{googlefonts/noto-emoji@934a5706}}[url(https://github.com/googlefonts/noto-emoji/tree/934a5706)]
-and is licensed under the \goto{{\em Apache License}, version
-2.0}[url(https://github.com/googlefonts/noto-emoji/blob/934a5706/LICENSE)].
+\type{noto-emoji.pdf} (\q{Noto Emoji}) was created from the \type{svg/} folder
+of
+\goto{\tt googlefonts/noto-emoji@934a5706}[url(https://github.com/googlefonts/noto-emoji/tree/934a5706)]
+and is licensed under the
+\goto{{\em Apache License}, version 2.0}[url(https://github.com/googlefonts/noto-emoji/blob/934a5706/LICENSE)].
 
-\subsection{\type{twemoji.pdf}}
+\subsection{Tw\-emoji}
 
-\type{twemoji.pdf} (\q{Twitter Emoji}) was created from the
-\type{assets/svg/} folder of
-\goto{\type{twitter/twemoji@d94f4cf7}}[url(https://github.com/twitter/twemoji/tree/d94f4cf7)]
-and is licensed under \goto{CC-BY
-4.0}[url(https://github.com/twitter/twemoji/blob/d94f4cf7/LICENSE-GRAPHICS)].
+\type{twemoji.pdf} (\q{Twitter Emoji}) was created from the \type{assets/svg/}
+folder of
+\goto{\tt twitter/twemoji@d94f4cf7}[url(https://github.com/twitter/twemoji/tree/d94f4cf7)]
+and is licensed under
+\goto{\acronym{CC-BY}~4.0}[url(https://github.com/twitter/twemoji/blob/d94f4cf7/LICENSE-GRAPHICS)].
 
-\subsection{\type{fxemoji.pdf}}
+\subsection{Fx\-Emoji}
 
-\type{fxemoji.pdf} (\q{FxEmojis}) was created from the
-\type{svgs/FirefoxEmoji/} folder of
-\goto{\type{mozilla/fxemoji@270af343}}[url(https://github.com/mozilla/fxemoji/tree/270af343)]
-and is licensed under \goto{CC-BY
-4.0}[url(https://github.com/mozilla/fxemoji/blob/270af343/LICENSE.md)].
+\type{fxemoji.pdf} (\q{FxEmojis}) was created from the \type{svgs/FirefoxEmoji/}
+folder of
+\goto{\tt mozilla/fxemoji@270af343}[url(https://github.com/mozilla/fxemoji/tree/270af343)]
+and is licensed under
+\goto{\acronym{CC-BY}~4.0}[url(https://github.com/mozilla/fxemoji/blob/270af343/LICENSE.md)].
 
-\subsection{\type{openmoji.pdf}}
+\subsection{Open\-Moji}
 
-\type{openmoji.pdf} (\q{OpenMoji}) was created from the
-\type{color/svg/} folder of
-\goto{\type{hfg-gmuend/openmoji@d6d0daad}}[url(https://github.com/hfg-gmuend/openmoji/tree/d6d0daad)]
-and is licensed under \goto{CC-BY-SA
-4.0}[url(https://github.com/hfg-gmuend/openmoji/blob/d6d0daad/LICENSE.txt)].
+\type{openmoji.pdf} (\q{OpenMoji}) was created from the \type{color/svg/} folder
+of
+\goto{\tt hfg-gmuend/openmoji@d6d0daad}[url(https://github.com/hfg-gmuend/openmoji/tree/d6d0daad)]
+and is licensed under
+\goto{\acronym{CC-BY-SA}~4.0}[url(https://github.com/hfg-gmuend/openmoji/blob/d6d0daad/LICENSE.txt)].
 
-\subsection{\type{emojione.pdf}}
+\subsection{Emoji\-One}
 
-\type{emojione.pdf} (\q{EmojiOne}) was created from the
-\type{assets/svg/} folder of
-\goto{\type{joypixels/emojione@v2.2.7}}[url(https://github.com/joypixels/emojione/tree/v2.2.7)]
-and is licensed under \goto{CC-BY
-4.0}[url(https://github.com/joypixels/emojione/blob/v2.2.7/LICENSE.md)].
+\type{emojione.pdf} (\q{EmojiOne}) was created from the \type{assets/svg/}
+folder of
+\goto{\tt joypixels/emojione@v2.2.7}[url(https://github.com/joypixels/emojione/tree/v2.2.7)]
+and is licensed under
+\goto{\acronym{CC-BY}~4.0}[url(https://github.com/joypixels/emojione/blob/v2.2.7/LICENSE.md)].
 
 \page
 \setuplayout[
@@ -366,9 +223,11 @@ and is licensed under \goto{CC-BY
 ]
 \section[sec:implementation]{Implementation}
 
-From here and until the end of this manual is the raw source code of \unemoji/. This is primarily of interest to developers; most users need not read further.
+From here and until the end of this manual is the raw source code of \unemoji/.
+This is primarily of interest to developers; most users need not read further.
 
-If want to offer any improvements to the code below, please open an issue or a \acronym{PR} on \goto{GitHub}[url(projecturl)].
+If want to offer any improvements to the code below, please open an issue or a
+\acronym{PR} on \goto{GitHub}[url(projecturl)].
 
 \setupbodyfont[10pt]
 \setuphead[subsection][
