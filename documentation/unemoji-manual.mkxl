@@ -126,6 +126,7 @@ drawframe(p);
 
 % The latex environment
 \tolerant\def\startlatex[#1]{%
+    \blank[samepage]
     \copyexpandedparameters[latex][latexdefault][
         engine,
         figureparams,
@@ -142,6 +143,7 @@ drawframe(p);
     \runbuffer[latex][\latexengine]%
     \outputframe{\lasttypesetbuffer}%
     \spac_indentation_variant_no%
+    \blank[preference]
 }
 
 

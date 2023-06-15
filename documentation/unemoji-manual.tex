@@ -40,6 +40,9 @@ natively supports \pdfTeX{} and \LuaTeX{}, and can support \XeTeX{} and
 
 \section{Loading}
 
+\Unemoji/ has support for both \LaTeX{} and Plain~\TeX{}. Loading the package is
+as follows:
+
 \subsection{\LaTeX{}}
 \startlatex[prebuffer=, postbuffer=]
 \documentclass{article}
@@ -69,27 +72,46 @@ natively supports \pdfTeX{} and \LuaTeX{}, and can support \XeTeX{} and
 
 \section{Input Formats}
 
+There are four different ways to select any given emoji.
+
 \subsection{Name}
+
+First, you can select an emoji by giving its officially-assigned Unicode name:
+
 \startlatex[]
 \emoji{duck}
 \stoplatex
 
 \subsection{Hexadecimal}
+
+You can also select an emoji by its Unicode codepoint in hexadecimal:
+
 \startlatex[]
 \emoji{1f986}
 \stoplatex
 
 \subsection{Decimal}
+
+Or in decimal (base-10):
+
 \startlatex[]
 \emoji{129414}
 \stoplatex
 
 \subsection{Unicode}
+
+Finally, if you are using LuaTeX, you can enter the Unicode character directly:
+
 \startlatex[]
 \emoji{🦆}  % LuaTeX Only!
 \stoplatex
 
 \section{Font Selection}
+
+\Unemoji/ allows you to select from a variety of emoji fonts. Below follows a
+demonstration of how to select the font as well as a sample glyph from each
+currently-supported font.
+
 \subsection{\LaTeX{}}
 \startlatex[figureparams={width=0.29\textwidth}]
 \begin{tabular}{r@{: }l}
@@ -155,7 +177,14 @@ natively supports \pdfTeX{} and \LuaTeX{}, and can support \XeTeX{} and
 
 \section{Composed Emoji}
 
+Many emoji are composed of multiple Unicode codepoints. \Unemoji/ supports
+these, although the input format is (currently) quite cumbersome.
+
 \subsection{Name}
+
+One option is to type the names of all components of the emoji, separated by
+spaces. For this option, any \acronym{ZWJ} characters are omitted.
+
 \startlatex[]
 \emoji[twemoji]
   {regional indicator symbol letter c
@@ -163,6 +192,11 @@ natively supports \pdfTeX{} and \LuaTeX{}, and can support \XeTeX{} and
 \stoplatex
 
 \subsection{Hexadecimal}
+
+The other option is to type the hexadecimal codepoints of the emoji's
+components, separated by hyphens. For this option, any \acronym{ZWJ} characters
+\emph{must} be included.
+
 \startlatex[]
 \emoji[twemoji]{1f1e8-1f1e6}
 \stoplatex
