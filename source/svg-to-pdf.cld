@@ -216,8 +216,8 @@ end)
 ---
 --- @param codepoint integer The Unicode codepoint to register
 --- @param components table<string> Codepoints to use for /ToUnicode
---- @param width number The width of the glyph in bp's
---- @param height number The height of the glyph in bp's
+--- @param width number The width of the glyph in sp's
+--- @param height number The height of the glyph in sp's
 --- @param code string The raw PDF stream to use for the glyph
 local function make_glyph(codepoint, components, width, height, code)
     -- Convert the codepoints to integers

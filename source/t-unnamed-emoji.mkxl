@@ -1,0 +1,29 @@
+%D \module
+%D   [     file=t-unnamed-emoji,
+%D      version=0.0.3, %%version
+%D        title=unnamed-emoji,
+%D     subtitle=\ConTeXt module unnamed-emoji,
+%D       author=Max Chernoff,
+%D         date=2023-06-12, %%dashdate
+%D    copyright=Max Chernoff,
+%D      license=MPL-2.0+,
+%D          url=https://github.com/gucci-on-fleek/unnamed-emoji]
+\startmodule[unnamed-emoji]
+\unprotect
+
+\installnamespace{unemoji}
+
+\installswitchcommandhandler \????unemoji {unemoji} \????unemoji
+
+\ctxloadluafile{unnamed-emoji}
+
+\tolerant\def\emoji[#1]#:#2{%
+    \ifparameter#1\or%
+        \unemoji_print{#1}{#2}%
+    \or%
+        \unemoji_print{noto-emoji}{#2}%
+    \fi%
+}
+
+\protect
+\stopmodule

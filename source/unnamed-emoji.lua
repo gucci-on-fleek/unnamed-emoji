@@ -8,6 +8,7 @@
 -- Save some globals
 local getfromdictionary = pdfe.getfromdictionary
 local getfromreference = pdfe.getfromreference
+local l_fonts = fonts
 local l_type = type
 local pairs = pairs
 local select = select
@@ -17,6 +18,7 @@ local yield = coroutine.yield
 -- Define some numerical constants
 local height = tex.sp("10bp")
 local bp_to_sp = tex.sp("1bp")
+local t3_scale = 0.093
 
 
 -----------------------------------------
@@ -61,8 +63,10 @@ end
 --- @param name string A filename
 --- @return string path An absolute path to the file
 local function get_font_path(name)
-    if not name:match("/") then
+    if not context and not name:match("/") then
         return kpse.find_file(name .. ".pdf")
+    elseif not name:match("/") then
+        return resolvers.findfile(name .. ".pdf")
     else
         return name
     end
@@ -82,6 +86,8 @@ local function register_tex_cmd(name, func, args, protected)
         name = "__unemoji_" .. name .. ":" .. string.rep("n", #args)
     elseif optex then
         name = "_unemoji_" .. name
+    elseif context then
+        name = "unemoji_" .. name
     else
         name = "unemoji@" .. name
     end
@@ -106,6 +112,13 @@ local function register_tex_cmd(name, func, args, protected)
     -- Actually register the function
     if optex then
         define_lua_command(name, scanning_func)
+    elseif context then
+        interfaces.implement {
+            name = name,
+            public = true,
+            arguments = args,
+            actions = func,
+        }
     else
         local index = luatexbase.new_luafunction(name)
         lua.get_functions_table()[index] = scanning_func
@@ -171,10 +184,10 @@ end
 --- @param stream luatex.pdfe.stream|string The stream
 --- @return string - The contents of the stream
 local stream_data = memoized_table(function(stream)
-    local str
-    if type(stream) == "luatex.pdfe.stream" then
+    local type = type(stream)
+    if type == "luatex.pdfe.stream" or type == "pdfe.stream" then
         return stream(true)
-    elseif type(stream) == "string" then
+    elseif type == "string" then
         return stream
     else
         return ""
@@ -277,16 +290,25 @@ local chars = memoized_table(function(filename)
             font = select(2, getfromreference(font))
 
             -- Get the character's slot as an integer from the page's stream
-            local info = {}
-            pdfscanner.scan(page.Contents(true), {
-                TJ = function(scanner, info)
-                    info.slot = scanner:pop()[2][1][2]
+            local slot
+
+            if context then
+                slot = tonumber(page.Contents(true):match("<(..)>"), 16)
+            else
+                local info = {}
+
+                pdfscanner.scan(page.Contents(true), {
+                    TJ = function(scanner, info)
+                        info.slot = scanner:pop()[2][1][2]
+                    end
+                }, info)
+
+                if info.slot and #info.slot == 1 then
+                    slot = string.byte(info.slot)
                 end
-            }, info)
+            end
 
-            if info.slot and #info.slot == 1 then
-                local slot = string.byte(info.slot)
-
+            if slot then
                 -- Our internal data about this character
                 local char = {
                     inner_fontname = fontname,
@@ -364,6 +386,96 @@ local load_font = memoized_table(function(pdf_font)
 end)
 
 
+if context then
+    local id = l_fonts.definers.internal { name = "LMRoman10-Regular" }
+
+    -- Register the dropin method "rawpdf" to allow us to inject raw PDF code
+    -- as the contents of a Type 3 glyph.
+    if not lpdf.registerfontmethod then
+        -- ConTeXt LMTX contains the code to register a new font method, but
+        -- it's commented out (disabled) by default, so we need to manually edit
+        -- the file to forcibly enable it.
+        error('Please uncomment "lpdf.registerfontmethod" in "lpdf-emb.lmt"!')
+    end
+
+
+    lpdf.registerfontmethod("rawpdf", function(filename, details)
+        return
+            details.properties.indexdata[1], -- Table of glyphs
+            t3_scale, -- Scale factor to export the glyph at
+            function(char) -- Code to convert the character to PDF
+                return char.code, char.width / bp_to_sp
+            end,
+            function() end, -- "Reset"
+            function() end -- Add any used resources to the font dict
+    end)
+
+
+    --- Add the provided glyph to the current font.
+    ---
+    --- @param codepoint integer The Unicode codepoint to register
+    --- @param components table<string> Codepoints to use for /ToUnicode
+    --- @param width number The width of the glyph in sp's
+    --- @param height number The height of the glyph in sp's
+    --- @param code string The raw PDF stream to use for the glyph
+    local function make_glyph(codepoint, components, width, height, code)
+        -- Convert the codepoints to integers
+        local unicode = {}
+        for _, component in ipairs(components) do
+            unicode[#unicode+1] = tonumber(component, 16)
+        end
+
+        -- Data for this glyph
+        local spec = {
+            width   = width,
+            height  = height,
+            depth   = 0,
+            unicode = unicode,
+            code = code,
+        }
+        -- Data for the original font
+        local tfmdata = l_fonts.hashes.identifiers[id]
+
+        -- Add the character metrics
+        tfmdata.characters[codepoint] = spec
+
+        -- Add the character drawing code
+        l_fonts.dropins.swapone(
+            "rawpdf",
+            tfmdata,
+            { code = spec },
+            codepoint
+        )
+
+        -- Finally, add the character to the font
+        l_fonts.constructors.addcharacters(
+            id,
+            { characters = { [codepoint] = spec } }
+        )
+    end
+
+
+    make_fonts = function(pdf_name, characters)
+        for fontname, characters in pairs(characters) do
+            for slot, char in pairs(characters) do
+                make_glyph(
+                    char.codepoint,
+                    { string.format("%x", char.codepoint) },
+                    char.width * bp_to_sp,
+                    height,
+                    char.char_obj
+                )
+            end
+        end
+    end
+
+
+    load_font = memoized_table(function(pdf_font)
+        return id
+    end)
+end
+
+
 -----------------------------------------
 --- Expose everything to the TeX side ---
 -----------------------------------------
@@ -407,18 +519,20 @@ register_tex_cmd(
 
 -- Undocumented callback that allows us to provide the PDF stream for each glyph
 -- of a T3 font to LuaTeX when it writes the PDF file.
-luatexbase.add_to_callback(
-    "provide_charproc_data",
-    function (mode, font_id, slot)
-        if mode == 2 then -- Mode 2 wants the PDF stream
-            local char = fonts[font_id][slot]
-            return stream_object[char.char_obj], char.width
-        elseif mode == 3 then -- Mode 3 wants the font's overall scale factor
-            return 0.093
-        end
-    end,
-    "unemoji"
-)
+if not context then
+    luatexbase.add_to_callback(
+        "provide_charproc_data",
+        function (mode, font_id, slot)
+            if mode == 2 then -- Mode 2 wants the PDF stream
+                local char = fonts[font_id][slot]
+                return stream_object[char.char_obj], char.width
+            elseif mode == 3 then -- Mode 3 wants the font's overall scale factor
+                return t3_scale
+            end
+        end,
+        "unemoji"
+    )
+end
 
 
 return {
