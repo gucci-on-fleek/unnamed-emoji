@@ -1,0 +1,17 @@
+% unnamed-emoji
+% https://github.com/gucci-on-fleek/unnamed-emoji
+% SPDX-License-Identifier: MPL-2.0+
+% SPDX-FileCopyrightText: 2023 Max Chernoff
+
+\_codedecl\lwcenable{unnamed-emoji <v0.0.3>} %%version
+\_namespace{unemoji}
+
+\_pdfextension glyphtounicode{fake!}{0000}
+\_directlua{require "unnamed-emoji"}
+
+\_optdef\emoji[noto-emoji]#1{%
+    \.print{\_the\_opt}{#1}%
+}
+
+\_endnamespace
+\_endcode

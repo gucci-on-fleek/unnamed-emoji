@@ -80,6 +80,8 @@ local function register_tex_cmd(name, func, args, protected)
     -- Mangle the name to an appropriate form for each supported format.
     if tex.formatname:find("latex") then
         name = "__unemoji_" .. name .. ":" .. string.rep("n", #args)
+    elseif optex then
+        name = "_unemoji_" .. name
     else
         name = "unemoji@" .. name
     end
@@ -102,13 +104,17 @@ local function register_tex_cmd(name, func, args, protected)
     end
 
     -- Actually register the function
-    local index = luatexbase.new_luafunction(name)
-    lua.get_functions_table()[index] = scanning_func
-
-    if protected then
-        token.set_lua(name, index, "protected")
+    if optex then
+        define_lua_command(name, scanning_func)
     else
-        token.set_lua(name, index)
+        local index = luatexbase.new_luafunction(name)
+        lua.get_functions_table()[index] = scanning_func
+
+        if protected then
+            token.set_lua(name, index, "protected")
+        else
+            token.set_lua(name, index)
+        end
     end
 end
 
