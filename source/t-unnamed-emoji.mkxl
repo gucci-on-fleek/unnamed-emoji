@@ -13,8 +13,6 @@
 
 \installnamespace{unemoji}
 
-\installswitchcommandhandler \????unemoji {unemoji} \????unemoji
-
 \ctxloadluafile{unnamed-emoji}
 
 \tolerant\def\emoji[#1]#:#2{%

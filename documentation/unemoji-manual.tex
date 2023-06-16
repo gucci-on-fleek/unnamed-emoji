@@ -32,18 +32,18 @@
     github=https://github.com/gucci-on-fleek/unnamed-emoji,
 ]
 
-\Unemoji/ is an experimental emoji package for \LaTeX{}, Plain~\TeX{}, and
-OpTeX. It natively supports \pdfTeX{} and \LuaTeX{}, and can support \XeTeX{}
-and any other \TeX{} engine using \type{dvipdfmx} with a patched version of
-\type{dvipdfmx}.
+\Unemoji/ is an experimental emoji package for \LaTeX{}, \ConTeXt{},
+Plain~\TeX{}, and OpTeX. It natively supports \pdfTeX{} and \LuaTeX{}, and can
+support \XeTeX{} and any other \TeX{} engine using \type{dvipdfmx} with a
+patched version of \type{dvipdfmx}.
 
 \subject{Contents}
 \placecontent[criterium=all]
 
 \section{Loading}
 
-\Unemoji/ has support for \LaTeX{}, Plain~\TeX{}, and \OpTeX{}. Loading the
-package is as follows:
+\Unemoji/ has support for \LaTeX{}, \ConTeXt{}, Plain~\TeX{}, and \OpTeX{}.
+Loading the package is as follows:
 
 \subsection{\LaTeX{}}
 \startlatex[prebuffer=, postbuffer=]
@@ -54,6 +54,16 @@ package is as follows:
 \begin{document}
     \emoji{duck}
 \end{document}
+\stoplatex
+
+\subsection{\ConTeXt{}}
+\startlatex[engine=context,prebuffer=,postbuffer=]
+% LMTX Only!
+\usemodule[unnamed-emoji]
+
+\startTEXpage[offset=1pt]
+    \emoji{duck}
+\stopTEXpage
 \stoplatex
 
 \subsection{Plain \TeX{}}
@@ -116,7 +126,8 @@ Or in decimal (base-10):
 
 \subsection{Unicode}
 
-Finally, if you are using LuaTeX, you can enter the Unicode character directly:
+Finally, if you are using Lua\TeX{}, you can enter the Unicode character
+directly:
 
 \startlatex[]
 \emoji{🦆}  % LuaTeX Only!
@@ -128,7 +139,7 @@ Finally, if you are using LuaTeX, you can enter the Unicode character directly:
 demonstration of how to select the font as well as a sample glyph from each
 currently-supported font.
 
-\subsection{\LaTeX{}}
+\subsection{\LaTeX{}/\\\ConTeXt{}/\\\OpTeX{}\phantom{/}}
 \startlatex[figureparams={width=0.29\textwidth}]
 \begin{tabular}{r@{: }l}
     \texttt{noto-emoji} &
@@ -188,39 +199,6 @@ currently-supported font.
     emojione &
     \def\emojifont{emojione}
     \emoji{1f638} \cr
-}
-\stoplatex
-
-\subsection{\OpTeX{}}
-
-\startbuffer[pre]
-\fontfam[LMfonts]
-\margins/1 (1.2,1.2) (0,0,0,0)in
-\parindent=0pt
-\load[unnamed-emoji]
-\stopbuffer
-
-\startlatex[
-    engine=optex,
-    prebuffer=pre,
-    postbuffer=post,
-    figureparams={width=0.29\textwidth}
-]
-\table{(\tt)rl}{
-    noto-emoji &
-    \emoji[noto-emoji]{1f638} \cr
-    %
-    twemoji &
-    \emoji[twemoji]{1f638} \cr
-    %
-    fxemoji &
-    \emoji[fxemoji]{1f638} \cr
-    %
-    openmoji &
-    \emoji[openmoji]{1f638} \cr
-    %
-    emojione &
-    \emoji[emojione]{1f638} \cr
 }
 \stoplatex
 
@@ -332,6 +310,9 @@ If want to offer any improvements to the code below, please open an issue or a
 
 \subsection{unnamed-emoji.opm}
 \typeTEXfile{../source/unnamed-emoji.opm}
+
+\subsection{t-unnamed-emoji.mkxl}
+\typeTEXfile{../source/t-unnamed-emoji.mkxl}
 
 \subsection{unnamed-emoji.lua}
 \typeLUAfile{../source/unnamed-emoji.lua}

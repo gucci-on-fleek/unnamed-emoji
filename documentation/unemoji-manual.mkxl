@@ -67,6 +67,17 @@ sandbox.registerrunner {
         path     = "string",
     }
 }
+
+sandbox.registerrunner {
+    name     = "context",
+    program  = "context",
+    method   = "execute",
+    template = "%filename%",
+    checkers = {
+        filename = "readable",
+        path     = "string",
+    }
+}
 \stopluacode
 
 
