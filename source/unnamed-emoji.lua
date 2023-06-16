@@ -61,7 +61,11 @@ end
 --- @param name string A filename
 --- @return string path An absolute path to the file
 local function get_font_path(name)
-    return kpse.find_file(name .. ".pdf")
+    if not name:match("/") then
+        return kpse.find_file(name .. ".pdf")
+    else
+        return name
+    end
 end
 
 
@@ -70,8 +74,9 @@ end
 --- @param name string The name of the `\csname` to define
 --- @param func function
 --- @param args table<string> The TeX types of the function arguments
+--- @param protected boolean|nil Define the command as `\protected`
 --- @return nil
-local function register_tex_cmd(name, func, args)
+local function register_tex_cmd(name, func, args, protected)
     -- Mangle the name to an appropriate form for each supported format.
     if tex.formatname:find("latex") then
         name = "__unemoji_" .. name .. ":" .. string.rep("n", #args)
@@ -99,7 +104,12 @@ local function register_tex_cmd(name, func, args)
     -- Actually register the function
     local index = luatexbase.new_luafunction(name)
     lua.get_functions_table()[index] = scanning_func
-    token.set_lua(name, index)
+
+    if protected then
+        token.set_lua(name, index, "protected")
+    else
+        token.set_lua(name, index)
+    end
 end
 
 
@@ -150,21 +160,28 @@ local function get_dests(document)
 end
 
 
---- Gets the PDF object for a stream.
+--- Gets the contents of a stream.
 ---
 --- @param stream luatex.pdfe.stream|string The stream
---- @return integer - The PDF object number
-local stream_object = memoized_table(function(stream)
+--- @return string - The contents of the stream
+local stream_data = memoized_table(function(stream)
     local str
     if type(stream) == "luatex.pdfe.stream" then
-        str = stream(true)
+        return stream(true)
     elseif type(stream) == "string" then
-        str = stream
+        return stream
     else
-        return 0
+        return ""
     end
+end)
 
-    return pdf.immediateobj("stream", str)
+
+--- Gets the PDF object for a stream.
+---
+--- @param stream string The stream's contents
+--- @return integer - The PDF object number
+local stream_object = memoized_table(function(stream)
+    return pdf.immediateobj("stream", stream)
 end)
 
 
@@ -268,7 +285,7 @@ local chars = memoized_table(function(filename)
                 local char = {
                     inner_fontname = fontname,
                     inner_slot = slot,
-                    char_obj = font.CharProcs["I" .. slot],
+                    char_obj = stream_data[font.CharProcs["I" .. slot]],
                     width = font.Widths[slot + 1],
                     codepoint = tonumber(name),
                 }
@@ -354,23 +371,31 @@ register_tex_cmd(
 )
 
 
+--- Prints a character from a given font.
+---
+--- @param fontname string The name of the font
+--- @param char_name string The name of the character
+local function print_char(fontname, char_name)
+    fontname = get_font_path(fontname)
+    local char = chars[fontname][char_name] or
+                 chars[fontname][tostring(utf8.codepoint(char_name))]
+
+    -- Directly write the glyph node, without any help from TeX
+    if char and char.codepoint then
+        tex.forcehmode()
+        local glyph = node.new("glyph")
+        glyph.char = char.codepoint
+        glyph.font = load_font(fontname)
+        node.write(glyph)
+    end
+end
+
+
 register_tex_cmd(
     "print",
-    function(fontname, char_name) -- Prints a given character
-        fontname = get_font_path(fontname)
-        local char = chars[fontname][char_name] or
-                     chars[fontname][tostring(utf8.codepoint(char_name))]
-
-        -- Directly write the glyph node, without any help from TeX
-        if char and char.codepoint then
-            tex.forcehmode()
-            local glyph = node.new("glyph")
-            glyph.char = char.codepoint
-            glyph.font = load_font(fontname)
-            node.write(glyph)
-        end
-    end,
-    { "string", "string" }
+    print_char,
+    { "string", "string" },
+    true
 )
 
 
@@ -388,3 +413,11 @@ luatexbase.add_to_callback(
     end,
     "unemoji"
 )
+
+
+return {
+    chars = chars,
+    load_font = load_font,
+    print = print_char,
+    register_tex_cmd = register_tex_cmd,
+}
