@@ -13,7 +13,8 @@ very polished yet, but mostly functional.
 
 - Directly supports pdfLaTeX, LuaLaTeX, Plain pdfTeX, and Plain LuaTeX.
 
-- Supports XeLaTeX, Plain XeTeX, and `dvipdfmx` with a [patched version of
+- Supports XeLaTeX, Plain XeTeX, and any TeX engine with `dvipdfmx`,
+  provided that you use a [patched version of
   `dvipdfmx`](dvipdfmx.patch).
 
 - Only needs a single PDF file per font to supply all characters. And

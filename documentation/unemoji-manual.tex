@@ -20,6 +20,7 @@
 % Abbreviations
 \def\unemoji/{\sans{unnamed-emoji}}
 \def\Unemoji/{\sans{Unnamed-emoji}}
+\define\OpTeX{Op\kern-.05em\TeX}
 \useURL[projecturl][https://github.com/gucci-on-fleek/unnamed-emoji]
 \let\q=\quotation
 
@@ -31,17 +32,18 @@
     github=https://github.com/gucci-on-fleek/unnamed-emoji,
 ]
 
-\Unemoji/ is an experimental emoji package for \LaTeX{} and Plain~\TeX{}. It
-natively supports \pdfTeX{} and \LuaTeX{}, and can support \XeTeX{} and
-\type{dvipdfmx} with a patched version of \type{dvipdfmx}.
+\Unemoji/ is an experimental emoji package for \LaTeX{}, Plain~\TeX{}, and
+OpTeX. It natively supports \pdfTeX{} and \LuaTeX{}, and can support \XeTeX{}
+and any other \TeX{} engine using \type{dvipdfmx} with a patched version of
+\type{dvipdfmx}.
 
 \subject{Contents}
 \placecontent[criterium=all]
 
 \section{Loading}
 
-\Unemoji/ has support for both \LaTeX{} and Plain~\TeX{}. Loading the package is
-as follows:
+\Unemoji/ has support for \LaTeX{}, Plain~\TeX{}, and \OpTeX{}. Loading the
+package is as follows:
 
 \subsection{\LaTeX{}}
 \startlatex[prebuffer=, postbuffer=]
@@ -65,6 +67,20 @@ as follows:
 
 \startlatex[engine=pdftex,prebuffer=pre]
 \input unnamed-emoji
+
+\emoji{duck}
+\bye
+\stoplatex
+
+\subsection{\OpTeX{}}
+\startbuffer[pre]
+\fontfam[LMfonts]
+\margins/1 (1,1) (0,0,0,0)em
+\parindent=0pt
+\stopbuffer
+
+\startlatex[engine=optex,prebuffer=pre]
+\load[unnamed-emoji]
 
 \emoji{duck}
 \bye
@@ -175,6 +191,39 @@ currently-supported font.
 }
 \stoplatex
 
+\subsection{\OpTeX{}}
+
+\startbuffer[pre]
+\fontfam[LMfonts]
+\margins/1 (1.2,1.2) (0,0,0,0)in
+\parindent=0pt
+\load[unnamed-emoji]
+\stopbuffer
+
+\startlatex[
+    engine=optex,
+    prebuffer=pre,
+    postbuffer=post,
+    figureparams={width=0.29\textwidth}
+]
+\table{(\tt)rl}{
+    noto-emoji &
+    \emoji[noto-emoji]{1f638} \cr
+    %
+    twemoji &
+    \emoji[twemoji]{1f638} \cr
+    %
+    fxemoji &
+    \emoji[fxemoji]{1f638} \cr
+    %
+    openmoji &
+    \emoji[openmoji]{1f638} \cr
+    %
+    emojione &
+    \emoji[emojione]{1f638} \cr
+}
+\stoplatex
+
 \section{Composed Emoji}
 
 Many emoji are composed of multiple Unicode codepoints. \Unemoji/ supports
@@ -280,6 +329,9 @@ If want to offer any improvements to the code below, please open an issue or a
 
 \subsection{unnamed-emoji.tex}
 \typeTEXfile{../source/unnamed-emoji.tex}
+
+\subsection{unnamed-emoji.opm}
+\typeTEXfile{../source/unnamed-emoji.opm}
 
 \subsection{unnamed-emoji.lua}
 \typeLUAfile{../source/unnamed-emoji.lua}

@@ -30,6 +30,7 @@ jobs:
             libertinus-fonts
             ltxcmds
             luatex85
+            optex
             pdftexcmds
             plex
             standalone

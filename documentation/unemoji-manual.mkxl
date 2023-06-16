@@ -56,6 +56,17 @@ sandbox.registerrunner {
         path     = "string",
     }
 }
+
+sandbox.registerrunner {
+    name     = "optex",
+    program  = "optex",
+    method   = "execute",
+    template = "%filename%",
+    checkers = {
+        filename = "readable",
+        path     = "string",
+    }
+}
 \stopluacode
 
 
