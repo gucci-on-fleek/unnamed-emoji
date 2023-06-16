@@ -391,7 +391,7 @@ if context then
 
     -- Register the dropin method "rawpdf" to allow us to inject raw PDF code
     -- as the contents of a Type 3 glyph.
-    if not lpdf.registerfontmethod then
+    if not rawget(lpdf, "registerfontmethod") then
         -- ConTeXt LMTX contains the code to register a new font method, but
         -- it's commented out (disabled) by default, so we need to manually edit
         -- the file to forcibly enable it.
