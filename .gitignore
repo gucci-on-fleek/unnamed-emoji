@@ -13,5 +13,5 @@
 temp*
 
 !fonts/*.pdf
-!docs/unemoji-specimens.pdf
+!documentation/unemoji-specimens.pdf
 !texmf/**/*.pdf
