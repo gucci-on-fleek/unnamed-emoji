@@ -3,7 +3,7 @@
 % SPDX-License-Identifier: MPL-2.0+
 % SPDX-FileCopyrightText: 2023 Max Chernoff
 
-\_codedecl\lwcenable{unnamed-emoji <v0.0.3>} %%version
+\_codedecl\lwcenable{unnamed-emoji <v0.0.4>} %%version
 \_namespace{unemoji}
 
 \_pdfextension glyphtounicode{fake!}{0000}
