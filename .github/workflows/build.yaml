@@ -40,6 +40,8 @@ jobs:
       - name: Build the documentation
         run: |
           export PATH=$HOME/texlive/bin/x86_64-linux:$PATH
+          sed -i '/registerfontmethod/,+4!b;{s/--/  /}' "$(kpsewhich lpdf-emb.lmt)"
+
           mtxrun --generate > /dev/null
           context --make > /dev/null
 
