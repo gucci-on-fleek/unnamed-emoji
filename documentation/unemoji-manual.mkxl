@@ -202,8 +202,38 @@ drawframe(p);
     \stopframedtext
 }
 
-% URL Formatting
-\setupinteraction[style=\tf]
+
+% Add characters
+\usemodule[unnamed-emoji]
+\startluacode
+interfaces.implement {
+    name = "addemojitofont",
+    public = true,
+    arguments = { "string" },
+    actions = function(str)
+        local unemoji = thirddata.unemoji
+
+        local char = unemoji.chars[unemoji.get_font_path("noto-emoji")][str]
+
+        id = font.current()
+
+        unemoji.make_glyph(
+            char.codepoint,
+            { string.format("%x", char.codepoint) },
+            char.width * tex.sp("1bp"),
+            height,
+            char.char_obj,
+            id
+        )
+    end,
+}
+\stopluacode
+
+\setupbodyfont\relax
+\begingroup
+    \setupbodyfont[tt,9.5pt]
+    \addemojitofont{duck}
+\endgroup
 
 \protect
 \stopenvironment

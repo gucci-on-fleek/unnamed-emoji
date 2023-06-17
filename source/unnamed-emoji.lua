@@ -386,6 +386,7 @@ local load_font = memoized_table(function(pdf_font)
 end)
 
 
+local make_glyph
 if context then
     local id = l_fonts.definers.internal { name = "LMRoman10-Regular" }
 
@@ -418,7 +419,8 @@ if context then
     --- @param width number The width of the glyph in sp's
     --- @param height number The height of the glyph in sp's
     --- @param code string The raw PDF stream to use for the glyph
-    local function make_glyph(codepoint, components, width, height, code)
+    --- @param id integer The font id
+    make_glyph = function (codepoint, components, width, height, code, id)
         -- Convert the codepoints to integers
         local unicode = {}
         for _, component in ipairs(components) do
@@ -463,7 +465,8 @@ if context then
                     { string.format("%x", char.codepoint) },
                     char.width * bp_to_sp,
                     height,
-                    char.char_obj
+                    char.char_obj,
+                    id
                 )
             end
         end
@@ -535,9 +538,17 @@ if not context then
 end
 
 
-return {
+local unemoji = {
     chars = chars,
+    get_font_path = get_font_path,
     load_font = load_font,
+    make_glyph = make_glyph,
     print = print_char,
     register_tex_cmd = register_tex_cmd,
 }
+
+if context then
+    thirddata.unemoji = unemoji
+end
+
+return unemoji
