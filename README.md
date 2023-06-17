@@ -9,6 +9,12 @@
 An experimental emoji package for (La)TeX. Name to be chosen later. Not
 very polished yet, but mostly functional.
 
+See
+[the manual](https://github.com/gucci-on-fleek/unnamed-emoji/releases/latest/download/unnamed-emoji.pdf)
+for complete usage details or the
+[font specimens](https://github.com/gucci-on-fleek/unnamed-emoji/releases/latest/download/unnamed-emoji-specimens.pdf)
+for a full listing of fonts and characters.
+
 ## Features
 
 - Directly supports pdfLaTeX, LuaLaTeX, Plain pdfTeX, and Plain LuaTeX.
