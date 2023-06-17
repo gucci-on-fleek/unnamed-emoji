@@ -293,7 +293,7 @@ local chars = memoized_table(function(filename)
             local slot
 
             if context then
-                slot = tonumber(page.Contents(true):match("<(..)>"), 16)
+                slot = tonumber(page.Contents(true):match("<(..)>") or "", 16)
             else
                 local info = {}
 
@@ -388,7 +388,14 @@ end)
 
 local make_glyph
 if context then
-    local id = l_fonts.definers.internal { name = "LMRoman10-Regular" }
+    local count = 0
+    local id = memoized_table(function(font)
+        count = count + 1
+        return l_fonts.definers.internal {
+            name = "LMRoman10-Regular",
+            size = tex.sp("10pt") + count,
+        }
+    end)
 
     -- Register the dropin method "rawpdf" to allow us to inject raw PDF code
     -- as the contents of a Type 3 glyph.
@@ -466,7 +473,7 @@ if context then
                     char.width * bp_to_sp,
                     height,
                     char.char_obj,
-                    id
+                    id[pdf_name]
                 )
             end
         end
@@ -474,7 +481,7 @@ if context then
 
 
     load_font = memoized_table(function(pdf_font)
-        return id
+        return id[pdf_font]
     end)
 end
 
