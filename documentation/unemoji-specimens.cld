@@ -1,0 +1,136 @@
+#!/usr/bin/env -S context --once
+-- -*- mode: lua; -*-
+-- vim: syntax=lua
+
+-- unnamed-emoji
+-- https://github.com/gucci-on-fleek/unnamed-emoji
+-- SPDX-License-Identifier: MPL-2.0+
+-- SPDX-FileCopyrightText: 2023 Max Chernoff
+
+luatex.wrapup(function()
+    os.execute(
+        "qpdf --verbose --linearize --compress-streams=y --recompress-flate --compression-level=9 --object-streams=generate --remove-unreferenced-resources=yes --replace-input " ..
+        file.replacesuffix(environment.jobname, "pdf")
+    )
+end)
+
+
+context.stepwise(function()
+
+context.usemodule { "unnamed-emoji" }
+context[[
+    \define[2]\emojicell{%
+        \strut\scale[s=10]{\emoji[#1]{#2}}%
+    }
+]]
+context.step()
+local unemoji = thirddata.unemoji
+
+
+local known_fonts = {}
+dir.globpattern("../fonts/", "**.pdf", false, function(name)
+    unemoji.chars(name)
+    known_fonts[#known_fonts+1] = name
+end)
+table.sort(known_fonts)
+
+
+local all_chars = {}
+for font, t in pairs(unemoji.chars) do
+    local font_chars = {}
+    for name, t in pairs(t) do
+        local obj = t.char_obj
+        local by_obj = font_chars[obj] or {}
+        font_chars[obj] = by_obj
+
+        by_obj[#by_obj+1] = name
+    end
+
+    for obj, chars in pairs(font_chars) do
+        local name = ""
+        for i, char in ipairs(chars) do
+            if char:match(" ") then
+                name = char
+                break
+            elseif not char:match("%d") then
+                name = char
+                break
+            elseif not char:match("%D") then
+                name = string.format("%x", tonumber(char))
+            end
+        end
+
+        local hex = ""
+        for i, char in ipairs(chars) do
+            if not char:match("[^-%x]") and char:match("%-") then
+                hex = char
+                break
+            elseif not char:match("%X") and char:match("%D") then
+                hex = char
+                break
+            elseif not char:match("%D") then
+                hex = string.format("%x", tonumber(char))
+            end
+        end
+
+        local current = all_chars[name] or {}
+        current.hex = hex
+        all_chars[name] = current
+        current[#current+1] = font
+    end
+end
+
+
+context.setupTABLE( { frame = "off" })
+context.setupTABLE( { "row" }, { "each" }, { align = "center", style = "tt" })
+context.setupTABLE( { "row" }, { "first" }, { style = "ttbf" })
+context.setupTABLE( { "column" }, { "each" }, { width = "1.5in" })
+context.setupalign { "lesshyphenation", "verytolerant" }
+
+
+context.starttext()
+for char, fonts in table.sortedpairs(all_chars) do
+    context.step()
+    local hex = fonts.hex
+    local fonts = table.tohash(fonts)
+    local row = {}
+
+
+    local codepoint
+    if not hex:match("%-") then
+        codepoint = tonumber(hex, 16)
+    end
+
+
+    context.startTEXpage()
+    context.startTABLE()
+    context.stepwise(function()
+
+
+    context.NC()          context(hex)
+    context.NC { nc = 3 } context(char)
+    context.NC()          context(codepoint)
+    context.NC() context.NR()
+
+    for i, font in ipairs(known_fonts) do
+        context.NC()
+        if fonts[font] then
+            context.emojicell(font, char)
+        end
+    end
+    context.NC() context.NR()
+
+
+    for i, font in ipairs(known_fonts) do
+        context.NC()
+        context(font:match("([^/]+)%.pdf"))
+    end
+    context.NC() context.NR()
+
+    end)
+    context.stopTABLE()
+    context.stopTEXpage()
+end
+context.stoptext()
+
+end)
