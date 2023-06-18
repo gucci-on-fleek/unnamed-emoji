@@ -10,8 +10,13 @@
 % Let us use make "private" macros
 \catcode`@=11
 
+% Knuth "tex" compatibility
+\ifx\expanded\undefined
+    {\global\let\ifcsname\iffalse}
+\fi
+
 % LuaTeX
-\ifdefined\directlua
+\ifx\directlua\undefined\else
     % Using luatexbase makes LaTeX interop much easier
     \input ltluatex
     % Make /ToUnicode work
@@ -21,7 +26,7 @@
 \fi
 
 % pdfTeX
-\ifdefined\pdftexversion
+\ifx\pdftexversion\undefined\else
     \def\unemoji@print#1#2{%
         % See if we've already used this emoji
         \ifcsname emoji@#1#2\endcsname%
@@ -40,7 +45,7 @@
 \fi
 
 % XeTeX / dvipdfmx
-\ifdefined\unemoji@print\else
+\ifx\unemoji@print\undefined
     \def\unemoji@print#1#2{%
         \hbox to 10bp{% No metrics with dvipdfmx, so just guess 10bp
             % Load and print the emoji, all at once
