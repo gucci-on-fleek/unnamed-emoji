@@ -34,7 +34,7 @@
             \pdfrefximage\csname emoji@#1#2\endcsname\relax%
         \else%
             % Otherwise, we first need to load page into an XObject
-            \pdfximage named{emoji#2}{#1.pdf}%
+            \pdfximage named{emoji#2}{unnamed-emoji-#1.pdf}%
             % Save a reference to the XObject
             \expandafter\mathchardef\csname emoji@#1#2\endcsname
                 =\pdflastximage\relax%
@@ -49,7 +49,7 @@
     \def\unemoji@print#1#2{%
         \hbox to 10bp{% No metrics with dvipdfmx, so just guess 10bp
             % Load and print the emoji, all at once
-            \special{pdf:image named "emoji#2" (#1.pdf)}%
+            \special{pdf:image named "emoji#2" (unnamed-emoji-#1.pdf)}%
             \hss%
         }%
     }%

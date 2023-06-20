@@ -64,9 +64,9 @@ end
 --- @return string path An absolute path to the file
 local function get_font_path(name)
     if not context and not name:match("/") then
-        return kpse.find_file(name .. ".pdf")
+        return kpse.find_file("unnamed-emoji-" .. name .. ".pdf")
     elseif not name:match("/") then
-        return resolvers.findfile(name .. ".pdf")
+        return resolvers.findfile("unnamed-emoji-" .. name .. ".pdf")
     else
         return name
     end

@@ -37,7 +37,7 @@
     % Loads an emoji
     \cs_new_protected:Nn \__unemoji_load:nn {
         % Load the page into an XForms Object
-        \pdfximage named { emoji #2 } { #1 .pdf }
+        \pdfximage named { emoji #2 } { unnamed-emoji- #1 .pdf }
 
         % Save a reference to the object
         \prop_put:cnV { g__unemoji_ #1 _prop } { #2 } \pdflastximage
@@ -155,7 +155,7 @@
                         pdf:image \c_space_tl          % command
                         @ \l_tmpa_str \c_space_tl      % save as this reference
                         named ~ "emoji #2" \c_space_tl % select the page
-                        ( #1 .pdf )                    % file name
+                        ( unnamed-emoji- #1 .pdf )     % file name
                     }
                     \hss % Prevent over/underfull box warnings
                 }

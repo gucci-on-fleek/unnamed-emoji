@@ -10,7 +10,7 @@ An experimental emoji package for (La)TeX. Name to be chosen later. Not
 very polished yet, but mostly functional.
 
 See
-[the manual](https://github.com/gucci-on-fleek/unnamed-emoji/releases/latest/download/unnamed-emoji.pdf)
+[the manual](https://github.com/gucci-on-fleek/unnamed-emoji/releases/latest/download/unnamed-emoji-manual.pdf)
 for complete usage details or the
 [font specimens](https://github.com/gucci-on-fleek/unnamed-emoji/releases/latest/download/unnamed-emoji-specimens.pdf)
 for a full listing of fonts and characters.

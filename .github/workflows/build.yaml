@@ -76,7 +76,7 @@ jobs:
         with:
           fail_on_unmatched_files: true
           files: |
-            texmf/doc/generic/unnamed-emoji/unnamed-emoji.pdf
+            texmf/doc/generic/unnamed-emoji/unnamed-emoji-manual.pdf
             texmf/doc/generic/unnamed-emoji/unnamed-emoji-specimens.pdf
             unnamed-emoji.ctan.zip
             unnamed-emoji.tds.zip
