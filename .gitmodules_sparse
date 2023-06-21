@@ -1,0 +1,22 @@
+# unnamed-emoji
+# https://github.com/gucci-on-fleek/unnamed-emoji
+# SPDX-License-Identifier: MPL-2.0+
+# SPDX-FileCopyrightText: 2023 Max Chernoff
+
+# Use with:
+#     git -c include.path=$(realpath .gitmodules_sparse) submodule update --filter=blob:none --depth=1 --init
+
+[submodule "third-party/noto-emoji"]
+    update = ! git sparse-checkout set --no-cone '!/*' '/svg/*.svg' && git checkout
+
+[submodule "third-party/twemoji"]
+    update = ! git sparse-checkout set --no-cone '!/*' '/assets/svg/*.svg' && git checkout
+
+[submodule "third-party/fxemoji"]
+    update = ! git sparse-checkout set --no-cone '!/*' '/svgs/FirefoxEmoji/*.svg' '!**/*layer*' && git checkout
+
+[submodule "third-party/openmoji"]
+    update = ! git sparse-checkout set --no-cone '!/*' '/color/svg/*.svg' && git checkout
+
+[submodule "third-party/emojione"]
+    update = ! git sparse-checkout set --no-cone '!/*' '/assets/svg/*.svg' && git checkout

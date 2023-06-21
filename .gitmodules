@@ -1,0 +1,39 @@
+# unnamed-emoji
+# https://github.com/gucci-on-fleek/unnamed-emoji
+# SPDX-License-Identifier: MPL-2.0+
+# SPDX-FileCopyrightText: 2023 Max Chernoff
+
+[submodule "third-party/noto-emoji"]
+    path = third-party/noto-emoji
+    url = https://github.com/googlefonts/noto-emoji.git
+    ignore = all
+    shallow = true
+    update = none
+
+[submodule "third-party/twemoji"]
+    path = third-party/twemoji
+    url = https://github.com/twitter/twemoji.git
+    ignore = all
+    shallow = true
+    update = none
+
+[submodule "third-party/fxemoji"]
+    path = third-party/fxemoji
+    url = https://github.com/mozilla/fxemoji.git
+    ignore = all
+    shallow = true
+    update = none
+
+[submodule "third-party/openmoji"]
+    path = third-party/openmoji
+    url = https://github.com/hfg-gmuend/openmoji.git
+    ignore = all
+    shallow = true
+    update = none
+
+[submodule "third-party/emojione"]
+    path = third-party/emojione
+    url = https://github.com/joypixels/emojione.git
+    ignore = all
+    shallow = true
+    update = none
