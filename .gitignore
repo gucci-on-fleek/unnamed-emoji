@@ -10,8 +10,10 @@
 *.tua
 *.tuc
 *#
+build/*
 temp*
 
-!fonts/*.pdf
+!build/.retain-empty-folder
 !documentation/unemoji-specimens.pdf
+!fonts/*.pdf
 !texmf/**/*.pdf

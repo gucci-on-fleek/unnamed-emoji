@@ -45,19 +45,11 @@ jobs:
           mtxrun --generate > /dev/null
           context --make > /dev/null
 
-          cd "$GITHUB_WORKSPACE/documentation"
           wget "https://raw.githubusercontent.com/gucci-on-fleek/lua-widow-control/master/docs/manual/lwc-manual.mkxl"
-          context unemoji-manual
+          make manual
 
       - name: Bundle the package
-        run: |
-          cd "$GITHUB_WORKSPACE"/texmf
-          zip -r "$GITHUB_WORKSPACE"/unnamed-emoji.tds.zip ./*
-          mkdir "$GITHUB_WORKSPACE"/ctan && cd "$GITHUB_WORKSPACE"/ctan
-          mkdir unnamed-emoji
-          find -L "$GITHUB_WORKSPACE"/texmf -type f -exec cp '{}' unnamed-emoji \;
-          cp "$GITHUB_WORKSPACE"/unnamed-emoji.tds.zip .
-          zip -r "$GITHUB_WORKSPACE"/unnamed-emoji.ctan.zip ./*
+        run: make bundle
 
       - name: Archive on success
         if: success()
@@ -67,7 +59,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
           path: |
-            unnamed-emoji.tds.zip
+            build/unnamed-emoji.tds.zip
             documentation/unemoji-manual.pdf
 
       - name: Create a release if this is a tag
@@ -78,5 +70,5 @@ jobs:
           files: |
             texmf/doc/generic/unnamed-emoji/unnamed-emoji-manual.pdf
             texmf/doc/generic/unnamed-emoji/unnamed-emoji-specimens.pdf
-            unnamed-emoji.ctan.zip
-            unnamed-emoji.tds.zip
+            build/unnamed-emoji.ctan.zip
+            build/unnamed-emoji.tds.zip

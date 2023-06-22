@@ -101,7 +101,7 @@ local font_name <const> = document.getargument("font")
 --     The scaling factor to apply to the MetaPost code
 local font
 
-if font_name == "noto" then -- Noto Emoji
+if font_name == "noto-emoji" then -- Noto Emoji
     font = {
         get_components = function(name)
             local components <const> = {}
