@@ -12,7 +12,15 @@
 
 % Knuth "tex" compatibility
 \ifx\expanded\undefined
-    {\global\let\ifcsname\iffalse}
+    {
+        \def\gcsletcs#1#2{%
+            \global%
+            \expandafter\let%
+            \csname#1\expandafter\endcsname%
+            \csname#2\endcsname%
+        }
+        \gcsletcs{ifcsname}{iffalse}
+    }
 \fi
 
 % LuaTeX
