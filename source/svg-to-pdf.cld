@@ -374,17 +374,6 @@ context.starttext()
 -- `context.stepwise` + `context.step` ensures that the Lua and TeX code run in
 -- sync.
 context.stepwise(function()
-    -- Good test files, uncomment to use
-    -- process("/home/max/Downloads/noto-svg/emoji_u1faf0.svg")
-    -- process("/home/max/Downloads/noto-svg/emoji_u1f986.svg")
-    -- process("/home/max/Downloads/noto-svg/emoji_u1f391.svg")
-    -- process("/home/max/Downloads/noto-svg/emoji_u1f469_1f3ff_200d_2764_200d_1f48b_200d_1f468_1f3fb.svg")
-    -- process("/home/max/Downloads/twemoji/1f986.svg")
-    -- process("/home/max/Downloads/twemoji/1f638.svg")
-    -- process("/home/max/Downloads/fxemoji/FirefoxEmoji/u1F55C-clock1thirty.svg")
-    -- process("/home/max/Downloads/openmoji/1F986.svg")
-    -- process("/home/max/Downloads/emojione/1f986.svg")
-
     -- Process each SVG file in the input directory
     local paths = memoized_table()
     dir.globpattern(document.getargument("in"), "/*.svg$", true, paths)
