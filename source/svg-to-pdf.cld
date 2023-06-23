@@ -85,6 +85,25 @@ local function average(t)
 end
 
 
+--- Memoizes a function call/table index.
+---
+--- @param func function<any, any>? The function to memoize
+--- @return table - The "function"
+local function memoized_table(func)
+    if not func then
+        func = function(key) return key end
+    end
+
+    return setmetatable({}, { __index = function(cache, key)
+        local ret = func(key, cache)
+        cache[key] = ret
+        return ret
+    end,  __call = function(self, arg)
+        return self[arg]
+    end })
+end
+
+
 --------------------------
 --- Font-specific code ---
 --------------------------
@@ -250,10 +269,6 @@ local chars <const> = {}
 --- Process each SVG file ---
 -----------------------------
 local function process(name)
-    if file.extname(name) ~= "svg" then -- Nothing to do here
-        return
-    end
-
     -- Get the character components of the current glyph
     local components <const> = font.get_components(name)
     if #components == 0 then
@@ -371,6 +386,11 @@ context.stepwise(function()
     -- process("/home/max/Downloads/emojione/1f986.svg")
 
     -- Process each SVG file in the input directory
-    dir.globpattern(document.getargument("in"), "**.svg", false, process)
+    local paths = memoized_table()
+    dir.globpattern(document.getargument("in"), "/*.svg$", true, paths)
+
+    for _, path in table.sortedpairs(paths) do
+        process(path)
+    end
 end)
 context.stoptext()
