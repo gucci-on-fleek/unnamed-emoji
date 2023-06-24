@@ -26,6 +26,7 @@ local fluent_skin = {
 ---     Converts a filename into a table of hex-encoded Unicode codepoints.
 --- @field mp_scale number The scaling factor to apply to the MetaPost code
 --- @field keep_effects boolean? Whether to retain shadings/transparencies
+--- @field licence string The licence text to inject into the PDF
 
 --- @type table<string, font>
 local font = {
@@ -41,6 +42,8 @@ local font = {
         end,
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 128,
+
+        licence = "Noto Emoji, Apache 2.0, GitHub:googlefonts/noto-emoji@934a5706."
     },
 
     twemoji = {
@@ -55,6 +58,8 @@ local font = {
         end,
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 48,
+
+        licence = "Twitter Emoji, CC-BY 4.0, GitHub:twitter/twemoji@d94f4cf7."
     },
 
     fxemoji = {
@@ -73,6 +78,8 @@ local font = {
         end,
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 512,
+
+        licence = "FxEmojis, CC-BY 4.0, GitHub:mozilla/fxemoji@270af343."
     },
 
     openmoji = {
@@ -87,6 +94,8 @@ local font = {
         end,
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 72,
+
+        licence = "OpenMoji, CC-BY-SA 4.0, GitHub:hfg-gmuend/openmoji@d6d0daad."
     },
 
     emojione = {
@@ -101,6 +110,8 @@ local font = {
         end,
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 74,
+
+        licence = "EmojiOne, CC-BY 4.0, GitHub:joypixels/emojione@v2.2.7."
     },
 
     ["fluent-color"] = { -- Mostly broken...
@@ -130,6 +141,8 @@ local font = {
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 32,
 
         keep_effects = true,
+
+        licence = "Fluent Emoji, MIT, GitHub:microsoft/fluentui-emoji@dfb5c3b7."
     },
 
     ["fluent-flat"] = {
@@ -157,6 +170,8 @@ local font = {
         end,
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 32,
+
+        licence = "Fluent Emoji, MIT, GitHub:microsoft/fluentui-emoji@dfb5c3b7."
     },
 }
 

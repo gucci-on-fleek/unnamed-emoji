@@ -37,6 +37,8 @@ local dest_formatter <const> =
 local fill_draw_colour <const> =
     string.formatters["%s RG %s rg"]
 
+local glyph_licence <const> = string.formatters["%%%% %s\n%s"]
+
 
 ---------------------------------
 --- Generic utility functions ---
@@ -363,6 +365,9 @@ local function process(name)
         :gsub("(%d%.%d%d)%d%d%d", "%1") -- Reduce the precision
         :gsub("(%d%.%d%d)%d%d", "%1")
         :gsub("(%d%.%d%d)%d", "%1")
+
+    -- Inject the licence data into each glyph
+    pdf_code = glyph_licence(font.licence, pdf_code)
 
     -- Add the glyph to the font
     make_glyph(
