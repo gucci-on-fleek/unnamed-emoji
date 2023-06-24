@@ -62,7 +62,8 @@ manual: documentation/unemoji-manual.pdf ;
 
 # Build the specimens
 documentation/unemoji-specimens.pdf: documentation/unemoji-specimens.cld
-	$^
+	cd ${dir $<}
+	./${notdir $<}
 
 .PHONY: specimens
 specimens: documentation/unemoji-specimens.pdf ;
