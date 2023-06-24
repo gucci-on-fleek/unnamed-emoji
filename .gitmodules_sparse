@@ -21,5 +21,8 @@
 [submodule "third-party/emojione"]
     update = ! git sparse-checkout set --no-cone '!/*' '/assets/svg/*.svg' && git checkout
 
-[submodule "fluentui-emoji"]
+[submodule "third-party/fluentui-emoji"]
     update = ! git sparse-checkout set --no-cone '!/*' '/assets/**/Color/*.svg' '/assets/**/Flat/*.svg' '/assets/**/metadata.json' && git checkout
+
+[submodule "third-party/cldr-json"]
+    update = ! git sparse-checkout set --no-cone '!/*' 'cldr-json/cldr-annotations-derived-modern/annotationsDerived/en/annotations.json' && git checkout

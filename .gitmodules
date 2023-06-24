@@ -44,3 +44,10 @@
     ignore = all
     shallow = true
     update = none
+
+[submodule "third-party/cldr-json"]
+    path = third-party/cldr-json
+    url = https://github.com/unicode-org/cldr-json.git
+    ignore = all
+    shallow = true
+    update = none
