@@ -11,6 +11,16 @@ local json = require("util-jsn")
 -- Each font has a different naming convention and glyph sizes, so we need some
 -- custom code for each font to normalize all this.
 
+local fluent_skin = {
+    Default = 1,
+    Light = 2,
+    ["Medium-Light"] = 3,
+    Medium = 4,
+    ["Medium-Dark"] = 5,
+    Dark = 6,
+}
+
+
 --- @class font
 --- @field get_components fun(name: string): table<string>
 ---     Converts a filename into a table of hex-encoded Unicode codepoints.
@@ -94,19 +104,28 @@ local font = {
     },
 
     ["fluent-color"] = { -- Mostly broken...
-        get_components = function(name)
-            if not file.nameonly(name):match("color$") then
-                return {}
-            end
+    get_components = function(name)
+        if not file.nameonly(name):match("_color") then
+            return {}
+        end
 
-            local metadata = json.load(
-                file.collapsepath(name .. "/../../metadata.json")
+        local dirname <const> = file.dirname(name)
+
+        local metadata = json.load(
+            file.collapsepath(dirname .. "/../metadata.json")
+        ) or json.load(
+            file.collapsepath(dirname .. "/../../metadata.json")
+        )
+
+        if metadata.unicodeSkintones then
+            local tone <const> = file.nameonly(
+                file.collapsepath(dirname .. "/..")
             )
-
-            local components <const> = metadata.unicode:split(" ")
-
-            return components
-        end,
+            return metadata.unicodeSkintones[fluent_skin[tone]]:split(" ")
+        else
+            return metadata.unicode:split(" ")
+        end
+    end,
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 32,
 
@@ -115,17 +134,26 @@ local font = {
 
     ["fluent-flat"] = {
         get_components = function(name)
-            if not file.nameonly(name):match("flat(_$") then
+            if not file.nameonly(name):match("_flat") then
                 return {}
             end
 
+            local dirname <const> = file.dirname(name)
+
             local metadata = json.load(
-                file.collapsepath(name .. "/../../metadata.json")
+                file.collapsepath(dirname .. "/../metadata.json")
+            ) or json.load(
+                file.collapsepath(dirname .. "/../../metadata.json")
             )
 
-            local components <const> = metadata.unicode:split(" ")
-
-            return components
+            if metadata.unicodeSkintones then
+                local tone <const> = file.nameonly(
+                    file.collapsepath(dirname .. "/..")
+                )
+                return metadata.unicodeSkintones[fluent_skin[tone]]:split(" ")
+            else
+                return metadata.unicode:split(" ")
+            end
         end,
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 32,
