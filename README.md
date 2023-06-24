@@ -156,3 +156,10 @@ and is licensed under [CC-BY-SA
 [`joypixels/emojione@v2.2.7`](https://github.com/joypixels/emojione/tree/v2.2.7)
 and is licensed under [CC-BY
 4.0](https://github.com/joypixels/emojione/blob/v2.2.7/LICENSE.md).
+
+### `fluent-flat.pdf`
+
+`fluent-flat.pdf` (“Fluent Emoji”) was created from the
+`assets/**/Flat/` folder of
+[`microsoft/fluentui-emoji@dfb5c3b7`](https://github.com/microsoft/fluentui-emoji/tree/dfb5c3b7)
+and is licensed under the [_MIT License_](https://github.com/microsoft/fluentui-emoji/blob/dfb5c3b7/LICENSE).

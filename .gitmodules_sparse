@@ -20,3 +20,6 @@
 
 [submodule "third-party/emojione"]
     update = ! git sparse-checkout set --no-cone '!/*' '/assets/svg/*.svg' && git checkout
+
+[submodule "fluentui-emoji"]
+    update = ! git sparse-checkout set --no-cone '!/*' '/assets/**/Color/*.svg' '/assets/**/Flat/*.svg' '/assets/**/metadata.json' && git checkout

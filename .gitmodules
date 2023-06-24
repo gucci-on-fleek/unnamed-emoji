@@ -37,3 +37,10 @@
     ignore = all
     shallow = true
     update = none
+
+[submodule "third-party/fluentui-emoji"]
+    path = third-party/fluentui-emoji
+    url = https://github.com/microsoft/fluentui-emoji.git
+    ignore = all
+    shallow = true
+    update = none

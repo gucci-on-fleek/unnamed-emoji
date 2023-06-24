@@ -3,6 +3,8 @@
 -- SPDX-License-Identifier: MPL-2.0+
 -- SPDX-FileCopyrightText: 2023 Max Chernoff
 
+local json = require("util-jsn")
+
 --------------------------
 --- Font-specific code ---
 --------------------------
@@ -13,6 +15,7 @@
 --- @field get_components fun(name: string): table<string>
 ---     Converts a filename into a table of hex-encoded Unicode codepoints.
 --- @field mp_scale number The scaling factor to apply to the MetaPost code
+--- @field keep_effects boolean? Whether to retain shadings/transparencies
 
 --- @type table<string, font>
 local font = {
@@ -88,6 +91,44 @@ local font = {
         end,
 
         mp_scale = tex.sp("10pt") / tex.sp("1bp") / 74,
+    },
+
+    ["fluent-color"] = { -- Mostly broken...
+        get_components = function(name)
+            if not file.nameonly(name):match("color$") then
+                return {}
+            end
+
+            local metadata = json.load(
+                file.collapsepath(name .. "/../../metadata.json")
+            )
+
+            local components <const> = metadata.unicode:split(" ")
+
+            return components
+        end,
+
+        mp_scale = tex.sp("10pt") / tex.sp("1bp") / 32,
+
+        keep_effects = true,
+    },
+
+    ["fluent-flat"] = {
+        get_components = function(name)
+            if not file.nameonly(name):match("flat(_$") then
+                return {}
+            end
+
+            local metadata = json.load(
+                file.collapsepath(name .. "/../../metadata.json")
+            )
+
+            local components <const> = metadata.unicode:split(" ")
+
+            return components
+        end,
+
+        mp_scale = tex.sp("10pt") / tex.sp("1bp") / 32,
     },
 }
 
