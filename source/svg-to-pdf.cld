@@ -163,7 +163,7 @@ local function make_glyph(codepoint, components, width, height, code)
         height  = height,
         depth   = 0,
         unicode = unicode,
-        code = code,
+        code = (width / bp_to_sp) .. " 0 d0 " .. code,
     }
     -- Data for the original font
     local tfmdata <const> = fonts.hashes.identifiers[lfont.current()]
@@ -191,7 +191,7 @@ end
 -- glyphs, this wouldn't be a big deal; but for a few thousand, this makes
 -- loading the PDF file quite slow. We use this questionable hack to remove
 -- any of these unwanted effects.
-utilities.sequencers.prependaction(
+if not font.keep_effects then utilities.sequencers.prependaction(
     get_upvalue(metapost.installplugin, "processoractions"), -- sequence
     "system", -- group
     function(object, prescript, before, after) -- action
@@ -229,6 +229,15 @@ utilities.sequencers.prependaction(
                 end
             end
 
+            if #rs == 0 then -- fallback
+                for _, value in ipairs{saved.sh_color_a, saved.sh_color_b} do
+                    local r, g, b = value:match("(.*):(.*):(.*)")
+                    rs[#rs+1] = r or value
+                    gs[#gs+1] = g or value
+                    bs[#bs+1] = b or value
+                end
+            end
+
             -- Add the average value as a solid fill/outline
             local values <const> = string.format(
                 "%0.2f %0.2f %0.2f",
@@ -237,7 +246,7 @@ utilities.sequencers.prependaction(
             before[2] = fill_draw_colour(values, values)
         end
     end
-)
+) end
 
 
 -- Add "named destinations" for each page with the glyph name/codepoint.
@@ -300,13 +309,45 @@ local function process(name)
 
     -- Scale and shift the MetaPost image
     mp_code = mp_code
-        :gsub("clip currentpicture.-;", "interim truecorners := 1;")
+        :gsub("clip currentpicture.-;", "\ninterim truecorners := 1;")
         :gsub("^draw ", "picture p; p :=")
         :gsub(
             ";%s*$",
             "; p := p shifted -llcorner p; draw p scaled " ..
              font.mp_scale .. " ;"
         )
+        :gsub(
+            'withcolor "url%([^)]-%)"',
+            "withopacity 0"
+        )
+
+    do -- We need to sort the gradient orders to produce a valid PDF
+        mp_code = mp_code
+            :gsub("[ \n]*(withshadestep *%b())[\n ]*", "\n%1\n")
+            :gsub("%s*\n+%s", "\n")
+            :splitlines()
+
+        local seen = {}
+        local count = 0
+        for i, line in ipairs(mp_code) do
+            local frac = tonumber(line:match("withshadefraction%s*([%d.]+)"))
+            if frac then
+                seen[frac] = i
+                count = count + 1
+            elseif count > 0 then
+                local first = i - count
+                local i = 0
+                for frac, pos in table.sortedpairs(seen) do
+                    mp_code[first + i] = mp_code[pos]
+                    i = i + 1
+                end
+                seen = {}
+                count = 0
+            end
+        end
+
+        mp_code = table.concat(mp_code, "\n")
+    end
 
     -- Render the Metafun image to PDF
     local pdf_code, width, height = metapost.simple(
@@ -319,8 +360,6 @@ local function process(name)
 
     -- Clean up the PDF code
     pdf_code = pdf_code
-        :gsub("^q ", "") -- Remove superfluous groups
-        :gsub(" Q$", "")
         :gsub("(%d%.%d%d)%d%d%d", "%1") -- Reduce the precision
         :gsub("(%d%.%d%d)%d%d", "%1")
         :gsub("(%d%.%d%d)%d", "%1")
