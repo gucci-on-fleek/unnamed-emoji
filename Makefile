@@ -97,9 +97,14 @@ update-version:
 	${version_run} "/%%[s]lashdate/ s|[[:digit:]]{4}.[[:digit:]]{2}.[[:digit:]]{2}|$$(date +%Y/%m/%d)|"
 
 
-# Initialize the repository
-.PHONY: init
-init: .gitmodules_sparse
+# Initialize the submodules
+.PHONY: submodules
+submodules: .gitmodules_sparse
 	git -c include.path=${abspath $^} submodule update --filter=blob:none --depth=1 --init
+
+
+# Apply the necessary patches to ConTeXt
+.PHONY: fix-context
+fix-context:
 	sed -i '/registerfontmethod/,+4!b;{s/--/  /}' "$$(kpsewhich lpdf-emb.lmt)"
 	context --make
