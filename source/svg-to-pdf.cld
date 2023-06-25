@@ -39,6 +39,10 @@ local fill_draw_colour <const> =
 
 local glyph_licence <const> = string.formatters["%%%% %s\n%s"]
 
+-- Modules
+local components_to_names = require "components-to-names"
+local font = require "font-config"
+
 
 ---------------------------------
 --- Generic utility functions ---
@@ -104,12 +108,6 @@ local function memoized_table(func)
         return self[arg]
     end })
 end
-
-
---------------------------
---- Font-specific code ---
---------------------------
-local font = require "font-config"
 
 
 ----------------------------
@@ -379,22 +377,8 @@ local function process(name)
     )
 
     -- Add the named destinations
-    if #components == 1 and not chars[char] then
-        make_name(char)
-        make_name(codepoint)
-        make_name(characters.data[codepoint].description)
-    else
-        make_name(table.concat(components, "-"))
-        make_name(codepoint)
-
-        local char_name = {}
-        for _, char in pairs(components) do
-            if char ~= "200d" then -- Zero-width joiner, ignore
-                char_name[#char_name+1] =
-                    characters.data[tonumber("0x" .. char)].description
-            end
-        end
-        make_name(table.concat(char_name, " "))
+    for _, component in ipairs(components_to_names(components)) do
+        make_name(component)
     end
 
     chars[char] = true

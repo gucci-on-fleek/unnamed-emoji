@@ -25,4 +25,4 @@
     update = ! git sparse-checkout set --no-cone '!/*' '/assets/**/Color/*.svg' '/assets/**/Flat/*.svg' '/assets/**/metadata.json' && git checkout
 
 [submodule "third-party/cldr-json"]
-    update = ! git sparse-checkout set --no-cone '!/*' 'cldr-json/cldr-annotations-derived-modern/annotationsDerived/en/annotations.json' && git checkout
+    update = ! git sparse-checkout set --no-cone '!/*' '/cldr-json/cldr-annotations-derived-modern/annotationsDerived/en*/annotations.json' '/cldr-json/cldr-annotations-modern/annotations/en*/annotations.json' && git checkout

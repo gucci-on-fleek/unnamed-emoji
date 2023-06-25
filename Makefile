@@ -22,8 +22,10 @@ temp="$$(mktemp -d)"
 cd "$$temp"
 
 ${CURDIR}/source/svg-to-pdf.cld \
+	--path=${CURDIR}/source/ \
 	--in=${abspath $<} \
-	--font=${basename ${notdir $@}}
+	--font=${basename ${notdir $@}} \
+	--cldr=${CURDIR}/third-party/cldr-json/
 mv ./svg-to-pdf.pdf ${abspath $@}
 
 rm -r "$$temp"
