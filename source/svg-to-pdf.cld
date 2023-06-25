@@ -383,11 +383,29 @@ local function process(name)
 
     chars[char] = true
 
+    -- Set the page number
+    local codepoint_dec = {}
+    for _, component in ipairs(components) do
+        codepoint_dec[#codepoint_dec+1] = tonumber(component, 16)
+    end
+
+    context.pushcatcodes("text")
+    context.setupuserpagenumber {
+        viewerprefix = utf8.char(table.unpack(codepoint_dec)),
+        state = "stop",
+    }
+    context.popcatcodes()
+
     -- Add the glyph to the document
     context.startTEXpage()
     context.verbatim(utf8.char(codepoint))
     context.stopTEXpage()
     context.step()
+
+    -- Page number, again
+    for _, page in ipairs(structures.pages.tobesaved) do
+        page.status = "stop" -- "status" should maybe be "state"?
+    end
 end
 
 -- Compress and linearize the PDF when we're done
