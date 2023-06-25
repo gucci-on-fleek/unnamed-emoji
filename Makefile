@@ -49,8 +49,11 @@ fonts/emojione.pdf: third-party/emojione/assets/svg source/svg-to-pdf.cld
 fonts/fluent-flat.pdf: third-party/fluentui-emoji/assets source/svg-to-pdf.cld
 	${build_font}
 
+fonts/noto-blob.pdf: third-party/noto-blob/svg source/svg-to-pdf.cld
+	${build_font}
+
 .PHONY: fonts
-fonts: fonts/noto-emoji.pdf fonts/twemoji.pdf fonts/fxemoji.pdf fonts/openmoji.pdf fonts/emojione.pdf fonts/fluent-flat.pdf ;
+fonts: fonts/noto-emoji.pdf fonts/twemoji.pdf fonts/fxemoji.pdf fonts/openmoji.pdf fonts/emojione.pdf fonts/fluent-flat.pdf fonts/noto-blob.pdf ;
 
 
 # Build the manual

@@ -51,3 +51,10 @@
     ignore = all
     shallow = true
     update = none
+
+[submodule "third-party/noto-blob"]
+    path = third-party/noto-blob
+    url = https://github.com/googlefonts/noto-emoji.git
+    ignore = all
+    shallow = true
+    update = none

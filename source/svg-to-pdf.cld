@@ -308,9 +308,17 @@ local function process(name)
     local mp_code = metapost.svgtomp { data = contents }
 
     -- Scale and shift the MetaPost image
+    if mp_code:match("^draw") then
+        mp_code = mp_code
+            :gsub("clip currentpicture.-;", "\ninterim truecorners := 1;")
+            :gsub("^draw ", "picture p; p :=")
+    else
+        mp_code = mp_code
+            :gsub("^", "picture p; p := image(")
+            :gsub("$", "; interim truecorners := 1 ;);")
+    end
+
     mp_code = mp_code
-        :gsub("clip currentpicture.-;", "\ninterim truecorners := 1;")
-        :gsub("^draw ", "picture p; p :=")
         :gsub(
             ";%s*$",
             "; p := p shifted -llcorner p; draw p scaled " ..

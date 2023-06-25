@@ -26,3 +26,7 @@
 
 [submodule "third-party/cldr-json"]
     update = ! git sparse-checkout set --no-cone '!/*' '/cldr-json/cldr-annotations-derived-modern/annotationsDerived/en*/annotations.json' '/cldr-json/cldr-annotations-modern/annotations/en*/annotations.json' && git checkout
+
+
+[submodule "third-party/noto-blob"]
+    update = ! git sparse-checkout set --no-cone '!/*' '/svg/*.svg' && git checkout

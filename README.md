@@ -163,3 +163,10 @@ and is licensed under [CC-BY
 `assets/**/Flat/` folder of
 [`microsoft/fluentui-emoji@dfb5c3b7`](https://github.com/microsoft/fluentui-emoji/tree/dfb5c3b7)
 and is licensed under the [_MIT License_](https://github.com/microsoft/fluentui-emoji/blob/dfb5c3b7/LICENSE).
+
+### `noto-blob.pdf`
+
+`noto-blob.pdf` (“Noto Emoji”) was created from the `svg/` folder of
+[`googlefonts/noto-emoji@8f0a65b1`](https://github.com/googlefonts/noto-emoji/tree/8f0a65b1)
+and is licensed under the [_Apache License_, version
+2.0](https://github.com/googlefonts/noto-emoji/blob/8f0a65b1/LICENSE).

@@ -173,6 +173,22 @@ local font = {
 
         licence = "Fluent Emoji, MIT, GitHub:microsoft/fluentui-emoji@dfb5c3b7."
     },
+
+    ["noto-blob"] = {
+        get_components = function(name)
+            local components <const> = {}
+            name = file.nameonly(name)
+            for char in name:match("emoji_u(.*)$"):gmatch("[^_]+") do
+                components[#components+1] = char
+            end
+
+            return components
+        end,
+
+        mp_scale = tex.sp("10pt") / tex.sp("1bp") / 128,
+
+        licence = "Noto Emoji, Apache 2.0, GitHub:googlefonts/noto-emoji@8f0a65b1."
+    },
 }
 
 return font[document.getargument("font")] or error("Unknown font")
