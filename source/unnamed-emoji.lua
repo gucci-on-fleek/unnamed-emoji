@@ -6,19 +6,39 @@
 -- Loads a PDF file into a Type 3 font.
 
 -- Save some globals
+local getfromarray = pdfe.getfromarray
 local getfromdictionary = pdfe.getfromdictionary
 local getfromreference = pdfe.getfromreference
 local l_fonts = fonts
 local l_type = type
+local lpeg_match = lpeg.match
 local pairs = pairs
 local select = select
+local string_char = string.char
+local tointeger = math.tointeger
 local tonumber = tonumber
 local yield = coroutine.yield
 
--- Define some numerical constants
-local height = tex.sp("10bp")
+-- Define some useful constants
 local bp_to_sp = tex.sp("1bp")
+local height = tex.sp("10bp")
+local PDF_STRING = 6
 local t3_scale = 0.093
+
+-- Replace any backslash escapes in a PDF (string) with their literal values.
+local pdf_unescape = lpeg.replacer {
+    { [[\r]], "\r" },
+    { [[\t]], "\t" },
+    { [[\b]], "\b" },
+    { [[\f]], "\f" },
+    { [[\n]], "\n" },
+    { [[\(]], "(" },
+    { [[\)]], ")" },
+    { [[\\]], "\\" },
+    { lpeg.P("\\") * -lpeg.patterns.octdigit^4 * lpeg.patterns.octdigit^3, function(s)
+        return string_char(tonumber(s:sub(2), 8))
+    end },
+}
 
 
 -----------------------------------------
@@ -147,7 +167,28 @@ local function array_pairs(array)
             index = index + 1
         end
 
-        return index, array[index]
+        local pdf_type, value, encoded = getfromarray(array, index)
+
+        -- If we have a hex-encoded string, we need to manually decode it
+        -- since the built-in decoder fails sometimes.
+        if pdf_type == PDF_STRING and encoded then
+            local iter = value:gmatch("..")
+            value = ""
+            for byte in iter do
+                value = value .. string_char(tonumber(byte, 16))
+            end
+
+        -- If we don't have a string, then we should use the generic getter
+        else
+            value = array[index]
+        end
+
+        -- Now we can process the backslash escapes
+        if pdf_type == PDF_STRING and value:match("\\") then
+            value = lpeg_match(pdf_unescape, value)
+        end
+
+        return index, value
     end
 end
 
@@ -269,19 +310,21 @@ local chars = memoized_table(function(filename)
 
     -- Loop over each named destination
     for name, dest in get_dests(document) do
+        -- The page object
+        local page = dest.D[1]
+
         -- If we've already seen the page this destination points to, just use a
         -- reference to the page's character
         local dest_key = tostring(dest)
         local prev_dest = dests[dest_key]
         if prev_dest then
-            if tonumber(name) then
-                prev_dest.codepoint = tonumber(name)
+            if tointeger(name) then
+                prev_dest.codepoint = tointeger(name)
             end
             pdf_font[name] = prev_dest
-        else -- Otherwise, we need to parse the page's contents
-            -- The page object
-            local page = dest.D[1]
 
+        -- Otherwise, we need to parse the page's contents
+        elseif page.Resources.Font then
             -- The font's internal name and object
             local fontname, _, font = getfromdictionary(
                 page.Resources.Font,
@@ -290,14 +333,17 @@ local chars = memoized_table(function(filename)
             font = select(2, getfromreference(font))
 
             -- Get the character's slot as an integer from the page's stream
+            local contents = page.Contents(true)
             local slot
 
             if context then
-                slot = tonumber(page.Contents(true):match("<(..)>") or "", 16)
+                -- Decode manually with ConTeXt (LMTX)
+                slot = tonumber(contents:match("<(..)>") or "", 16)
             else
                 local info = {}
 
-                pdfscanner.scan(page.Contents(true), {
+                -- Use pdfscanner to decode with LuaTeX
+                pdfscanner.scan(contents, {
                     TJ = function(scanner, info)
                         info.slot = scanner:pop()[2][1][2]
                     end
@@ -315,7 +361,7 @@ local chars = memoized_table(function(filename)
                     inner_slot = slot,
                     char_obj = stream_data[font.CharProcs["I" .. slot]],
                     width = font.Widths[slot + 1],
-                    codepoint = tonumber(name),
+                    codepoint = tointeger(name),
                 }
 
                 -- Save this data in multiple tables for easy access
@@ -358,7 +404,7 @@ local load_font = memoized_table(function(pdf_font)
     -- Make the VF metadata for all characters
     local define_chars = {}
     for name, char in pairs(chars[pdf_font]) do
-        name = tonumber(name)
+        name = tointeger(name)
         if name then
             local id = fonts[pdf_font][char.inner_fontname]
             define_chars[name] = {
