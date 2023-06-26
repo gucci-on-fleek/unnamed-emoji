@@ -25,21 +25,6 @@ local height = tex.sp("10bp")
 local PDF_STRING = 6
 local t3_scale = 0.093
 
--- Replace any backslash escapes in a PDF (string) with their literal values.
-local pdf_unescape = lpeg.replacer {
-    { [[\r]], "\r" },
-    { [[\t]], "\t" },
-    { [[\b]], "\b" },
-    { [[\f]], "\f" },
-    { [[\n]], "\n" },
-    { [[\(]], "(" },
-    { [[\)]], ")" },
-    { [[\\]], "\\" },
-    { lpeg.P("\\") * -lpeg.patterns.octdigit^4 * lpeg.patterns.octdigit^3, function(s)
-        return string_char(tonumber(s:sub(2), 8))
-    end },
-}
-
 
 -----------------------------------------
 --- General-purpose utility functions ---
@@ -71,6 +56,21 @@ local function memoized_table(func)
     end,  __call = function(self, arg)
         return self[arg]
     end })
+end
+
+
+if not lpeg.replacer then
+    --- Replace a list of patterns with the given replacements.
+    ---
+    --- @param maps (string|function)[][] A list of patterns and replacements
+    --- @return Capture - The replacement pattern
+    function lpeg.replacer(maps)
+        local p = lpeg.P(false)
+        for _, map in ipairs(maps) do
+            p = p + lpeg.P(map[1]) / map[2]
+        end
+        return lpeg.Cs((p + 1)^0)
+    end
 end
 
 
@@ -150,6 +150,22 @@ local function register_tex_cmd(name, func, args, protected)
         end
     end
 end
+
+
+--- Replace PDF escape sequences with their actual characters.
+local pdf_unescape = lpeg.replacer {
+    { [[\r]], "\r" },
+    { [[\t]], "\t" },
+    { [[\b]], "\b" },
+    { [[\f]], "\f" },
+    { [[\n]], "\n" },
+    { [[\(]], "(" },
+    { [[\)]], ")" },
+    { [[\\]], "\\" },
+    { lpeg.P("\\") * -lpeg.R("07")^4 * lpeg.R("07")^3, function(s)
+        return string_char(tonumber(s:sub(2), 8))
+    end },
+}
 
 
 --- Iterator for a PDF array/dictionary.
@@ -513,14 +529,16 @@ if context then
     make_fonts = function(pdf_name, characters)
         for fontname, characters in pairs(characters) do
             for slot, char in pairs(characters) do
-                make_glyph(
-                    char.codepoint,
-                    { string.format("%x", char.codepoint) },
-                    char.width * bp_to_sp,
-                    height,
-                    char.char_obj,
-                    id[pdf_name]
-                )
+                if char.codepoint then
+                    make_glyph(
+                        char.codepoint,
+                        { string.format("%x", char.codepoint) },
+                        char.width * bp_to_sp,
+                        height,
+                        char.char_obj,
+                        id[pdf_name]
+                    )
+                end
             end
         end
     end

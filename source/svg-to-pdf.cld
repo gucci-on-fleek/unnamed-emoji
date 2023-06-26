@@ -259,14 +259,26 @@ local dests <const> = table.setmetatableindex(function(t, k)
 end)
 
 
+local used_names <const> = {}
+
 --- Makes a named destination to the current page.
 ---
 --- @param name string
 local function make_name(name)
-    lpdf.registerdestination(
-        "emoji" .. tostring(name):lower(),
-        dests[tex.count.realpageno]
-    )
+    if not used_names[name] then
+        lpdf.registerdestination(
+            "emoji" .. tostring(name):lower(),
+            dests[tex.count.realpageno]
+        )
+        used_names[name] = true
+    else
+        print(
+            "Duplicate name",
+            name,
+            document.getargument("font"),
+            tex.count.realpageno
+        )
+    end
 end
 
 
@@ -284,14 +296,20 @@ local function process(name)
         return
     end
 
-    -- The "primary" component
-    local char <const> = components[1]
+    -- The character as a Unicode string
+    local codepoint_dec <const> = {}
+    for _, component in ipairs(components) do
+        codepoint_dec[#codepoint_dec+1] = tonumber(component, 16)
+    end
+
+    local char <const> = utf8.char(table.unpack(codepoint_dec))
 
     -- Each codepoint in a font can only have a single definition, so we use a
     -- codepoint from the PUA if we have duplicates.
     local codepoint
-    if not chars[char] then
-        codepoint = tonumber("0x" .. char)
+    if not chars[char] and utf8.len(char) == 1 then
+        codepoint = utf8.codepoint(char)
+        chars[char] = true
     else
         codepoint = fonts.helpers.sharedprivates[table.concat(components, "-")]
     end
@@ -385,21 +403,42 @@ local function process(name)
     )
 
     -- Add the named destinations
-    for _, component in ipairs(components_to_names(components)) do
+    make_name(char)
+
+    local names <const> = components_to_names(components)
+    for _, component in ipairs(names) do
         make_name(component)
     end
 
-    chars[char] = true
-
-    -- Set the page number
-    local codepoint_dec = {}
-    for _, component in ipairs(components) do
-        codepoint_dec[#codepoint_dec+1] = tonumber(component, 16)
+    -- Ensure that we always have a unique name for each glyph
+    if not table.contains(names, tostring(codepoint)) then
+        make_name(tostring(codepoint))
     end
 
+    -- Add any missing names
+    if #names == 0 and #components > 1 then
+        local char_names <const> = {}
+        local char_hexes <const> = {}
+
+        for _, code in ipairs(components) do
+            code = tonumber(code, 16)
+            if code ~= 0xfe0f then
+                if code ~= 0x200d then -- Zero-width joiner, ignore
+                    table.insert(char_names, characters.data[code].description)
+                end
+
+                table.insert(char_hexes, string.format("%x", code))
+            end
+        end
+
+        make_name(table.concat(char_names, " "))
+        make_name(table.concat(char_hexes, "-"))
+    end
+
+    -- Set the page number
     context.pushcatcodes("text")
     context.setupuserpagenumber {
-        viewerprefix = utf8.char(table.unpack(codepoint_dec)),
+        viewerprefix = char,
         state = "stop",
     }
     context.popcatcodes()
@@ -427,7 +466,7 @@ end)
 context.starttext()
 -- `context.stepwise` + `context.step` ensures that the Lua and TeX code run in
 -- sync.
-context.stepwise(function()
+context.stepwise(function() print(xpcall(function()
     -- Process each SVG file in the input directory
     local paths = memoized_table()
     dir.globpattern(document.getargument("in"), "/*.svg$", true, paths)
@@ -435,5 +474,5 @@ context.stepwise(function()
     for _, path in table.sortedpairs(paths) do
         process(path)
     end
-end)
+end, debug.traceback)) end)
 context.stoptext()

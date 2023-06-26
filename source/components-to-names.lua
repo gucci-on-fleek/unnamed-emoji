@@ -18,16 +18,22 @@ local len <const> = utf8.len
 local lowercase <const> = string.lower
 local next <const> = next
 local pairs <const> = pairs
+local utf_char <const> = utf8.char
 
 -- ConTeXt-specific
 local character_data <const> = characters.data
 local dec_str <const> = string.formatters["%d"]
-local hex_str <const> = string.formatters["%x"]
+local hex_str <const> = string.formatters["0x%x"]
 local json <const> = require("util-jsn")
 local lpeg_match <const> = lpeg.match
 local lpeg_P <const> = lpeg.P
 local lpeg_stripper <const> = lpeg.stripper
 local sortedpairs <const> = table.sortedpairs
+
+-- Custom
+local ALWAYS <const> = "always"
+local NEVER <const> = "never"
+local UNIQUE <const> = "unique"
 
 
 ---------------------------------
@@ -73,7 +79,8 @@ local by_name <const> = {}
 ---
 --- @param char string The Unicode glyph for the character
 --- @param name string The name to associate with the glyph
-local function add_name(char, name)
+--- @param retention "always"|"never"|"unique" When to retain the character
+local function add_name(char, name, retention)
     -- Make everything lowercase
     name = lowercase(name)
 
@@ -89,12 +96,12 @@ local function add_name(char, name)
         }
     )
     if shortened ~= name then
-        add_name(char, shortened)
+        add_name(char, shortened, retention)
     end
 
     -- Save each name. We do `[name] = true` to avoid duplicates.
     by_name[name] = by_name[name] or {}
-    by_name[name][char] = true
+    by_name[name][char] = retention
 end
 
 
@@ -123,14 +130,14 @@ for _, annotation in ipairs(annotations) do  -- Loop over each file
     for char, t in sortedpairs(annotation) do -- Loop over each character
         local skin_tone = false
 
-        add_name(char, char)
+        add_name(char, char, NEVER)
 
         -- Base Unicode data
         if len(char) == 1 then -- Single character
             local code <const> = codepoint(char)
-            add_name(char, character_data[code].description)
-            add_name(char, dec_str(code))
-            add_name(char, hex_str(code))
+            add_name(char, character_data[code].description, ALWAYS)
+            add_name(char, dec_str(code), UNIQUE)
+            add_name(char, hex_str(code), ALWAYS)
 
         else -- Composed/ligated characters
             local char_names <const> = {}
@@ -149,50 +156,82 @@ for _, annotation in ipairs(annotations) do  -- Loop over each file
                 insert(char_hexes, hex_str(code))
             end
 
-            add_name(char, concat(char_names, " "))
-            add_name(char, concat(char_hexes, "-"))
+            add_name(char, concat(char_names, " "), ALWAYS)
+            add_name(char, concat(char_hexes, "-"), ALWAYS)
         end
 
         -- The CLDR "text-to-speech" attribute is the best human-readable
         -- name for each character (sequence).
         if t.tts then
-            add_name(char, t.tts[1])
+            add_name(char, t.tts[1], UNIQUE)
         end
 
         -- The CLDR "tags" are also pretty good, but they can be duplicated
         -- between characters so we need to be careful.
         if not skin_tone and t.default then
             for i, name in ipairs(t.default) do
-                add_name(char, name)
+                add_name(char, name, UNIQUE)
             end
         end
     end
 end
 
 
+-- Map each character to a list of associated characters
+for codepoint, data in pairs(character_data) do
+    local char <const> = utf_char(codepoint)
+    add_name(char, char, NEVER)
+    add_name(char, data.description, ALWAYS)
+    add_name(char, dec_str(codepoint), UNIQUE)
+    add_name(char, hex_str(codepoint), ALWAYS)
+    if data.adobename then
+        add_name(char, data.adobename, UNIQUE)
+    end
+end
+
+
 -- Now map each character to a list of associated names
 local by_char <const> = {}
-for name, values in pairs(by_name) do
-    local first <const> = next(values)
+for name, glyphs in sortedpairs(by_name) do
+    name = name:gsub("^0x", "")
+    local first <const>, value <const> = next(glyphs)
 
-    if not next(values, first) then -- Like `#values == 1`
+    -- If there's just a single "unique" name, then use it
+    if not next(glyphs, first) and -- Like `#values == 1`
+       value ~= NEVER
+    then
         by_char[first] = by_char[first] or {}
         insert(by_char[first], name)
+
+    -- If there are other names, then only keep the "always" names
+    else
+        for glyph, value in sortedpairs(glyphs) do
+            if value == ALWAYS and
+               not name:match("private")
+            then
+                by_char[glyph] = by_char[glyph] or {}
+                insert(by_char[glyph], name)
+            end
+        end
     end
 end
 
 
 --- Converts a list of codepoints to a list of names.
 ---
---- @param components string[] A list of hex strings for each codepoint
+--- @param components string[]|string A list of hex strings for each codepoint
 --- @return string[] - A list of names for the given codepoints
 return function(components)
     local status <const>, result <const> = pcall(function()
-        local key <const> = concat(
-            filter(components, function(v) return v ~= "fe0f" end),
-            "-"
-        )
-        return by_char[next(by_name[key])]
+        if type(components) == "string" then
+            return by_char[components] or {}
+        elseif type(components) == "table" then
+            local key <const> = "0x" .. concat(
+                filter(components, function(v) return v ~= "fe0f" end),
+                "-"
+            )
+            return by_char[next(by_name[key])]
+        end
     end)
 
     if status then
