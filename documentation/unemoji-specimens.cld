@@ -15,7 +15,7 @@ luatex.wrapup(function()
 end)
 
 
-context.stepwise(function()
+context.stepwise(function() print(xpcall(function()
 
 context.usemodule { "unnamed-emoji" }
 context[[
@@ -30,15 +30,15 @@ local unemoji = thirddata.unemoji
 local known_fonts = {}
 dir.globpattern("../fonts/", "**.pdf", false, function(name)
     unemoji.chars(name)
-    known_fonts[#known_fonts+1] = name
+    known_fonts[#known_fonts+1] = file.nameonly(name)
 end)
 table.sort(known_fonts)
 
 
 local all_chars = {}
-for font, t in pairs(unemoji.chars) do
+for font, t in table.sortedpairs(unemoji.chars) do
     local font_chars = {}
-    for name, t in pairs(t) do
+    for name, t in table.sortedpairs(t) do
         local obj = t.char_obj
         local by_obj = font_chars[obj] or {}
         font_chars[obj] = by_obj
@@ -46,37 +46,31 @@ for font, t in pairs(unemoji.chars) do
         by_obj[#by_obj+1] = name
     end
 
-    for obj, chars in pairs(font_chars) do
-        local name = ""
+    for obj, chars in table.sortedpairs(font_chars) do
+        local key
         for i, char in ipairs(chars) do
-            if char:match(" ") then
-                name = char
+            local success, first, second = pcall(utf8.codepoint, char, 1, -1)
+            if success and
+               ((first > 255 and first ~= 8220) or
+                (second and second > 255 and second ~= 8221))
+            then
+                key = char:gsub("\u{fe0f}", "")
                 break
-            elseif not char:match("%d") then
-                name = char
-                break
-            elseif not char:match("%D") then
-                name = string.format("%x", tonumber(char))
             end
         end
 
-        local hex = ""
-        for i, char in ipairs(chars) do
-            if not char:match("[^-%x]") and char:match("%-") then
-                hex = char
-                break
-            elseif not char:match("%X") and char:match("%D") then
-                hex = char
-                break
-            elseif not char:match("%D") then
-                hex = string.format("%x", tonumber(char))
-            end
-        end
+        if key then
+            local current = all_chars[key] or {}
+            all_chars[key] = current
 
-        local current = all_chars[name] or {}
-        current.hex = hex
-        all_chars[name] = current
-        current[#current+1] = font
+            local fonts = current.fonts or {}
+            current.fonts = fonts
+            table.merge(fonts, { [file.nameonly(font)] = true })
+
+            local found = current.found or {}
+            current.found = found
+            table.merge(found, table.tohash(chars))
+        end
     end
 end
 
@@ -87,35 +81,47 @@ context.setupTABLE( { "row" }, { "first" }, { style = "ttbf" })
 context.setupTABLE( { "column" }, { "each" }, { width = "1.5in" })
 context.setupalign { "lesshyphenation", "verytolerant" }
 
-
 context.starttext()
-for char, fonts in table.sortedpairs(all_chars) do
+for char, data in table.sortedpairs(all_chars) do
     context.step()
-    local hex = fonts.hex
-    local fonts = table.tohash(fonts)
-    local row = {}
 
-
-    local codepoint
-    if not hex:match("%-") then
-        codepoint = tonumber(hex, 16)
-    end
-
+    context.pushcatcodes("text")
+    context.setupuserpagenumber {
+        viewerprefix = char,
+        state = "stop",
+    }
+    context.popcatcodes()
 
     context.startTEXpage()
     context.startTABLE()
     context.stepwise(function()
 
+    context.NC { nc = tostring(#known_fonts) }
+    for name, _ in table.sortedpairs(data.found) do
+        if not math.tointeger(name) and
+           name ~= char
+        then
+            context.verbatim(name)
+            context.qquad()
+        end
+    end
 
-    context.NC()          context(hex)
-    context.NC { nc = 3 } context(char)
-    context.NC()          context(codepoint)
+    local codepoint <const> = utf8.codepoint(char)
+    local hex <const> = string.format("%x", codepoint)
+    context.verbatim(tostring(codepoint))
+    context.qquad()
+
+    if math.tointeger(hex) then
+        context.verbatim(hex)
+        context.qquad()
+    end
+
     context.NC() context.NR()
 
     for i, font in ipairs(known_fonts) do
         context.NC()
-        if fonts[font] then
-            context.emojicell(font, char)
+        if data.fonts[font] then
+            context.verbatim.emojicell(font, char)
         end
     end
     context.NC() context.NR()
@@ -123,14 +129,19 @@ for char, fonts in table.sortedpairs(all_chars) do
 
     for i, font in ipairs(known_fonts) do
         context.NC()
-        context(font:match("([^/]+)%.pdf"))
+        context(font)
     end
     context.NC() context.NR()
 
     end)
     context.stopTABLE()
     context.stopTEXpage()
+    context.step()
+
+    for _, page in ipairs(structures.pages.tobesaved) do
+        page.status = "stop"
+    end
 end
 context.stoptext()
 
-end)
+end, debug.traceback)) end)
