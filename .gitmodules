@@ -58,3 +58,17 @@
     ignore = all
     shallow = true
     update = none
+
+[submodule "third-party/region-flags"]
+    path = third-party/region-flags
+    url = https://github.com/fonttools/region-flags.git
+    ignore = all
+    shallow = true
+    update = none
+
+[submodule "third-party/warp"]
+    path = third-party/warp
+    url = https://github.com/rsheeter/warp.git
+    ignore = all
+    shallow = true
+    update = checkout

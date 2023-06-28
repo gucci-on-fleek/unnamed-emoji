@@ -74,6 +74,14 @@ documentation/unemoji-specimens.pdf: documentation/unemoji-specimens.cld
 specimens: documentation/unemoji-specimens.pdf ;
 
 
+# Make the flags
+.PHONY: noto-flags
+noto-flags: third-party/region-flags/svg/
+	find $< -name '*.svg' -print \
+	| parallel --will-cite --jobs 0 -- source/make-flags.lua \
+	third-party/warp/naive_warp.py third-party/noto-emoji/svg/
+
+
 # Bundle the files
 .PHONY: bundle
 bundle:
