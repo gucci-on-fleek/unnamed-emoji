@@ -435,7 +435,12 @@ local function process(name)
             end
         end
 
-        make_name(table.concat(char_names, " "))
+        make_name(
+            table.concat(char_names, " ")
+                :gsub(" ?TAG LATIN SMALL LETTER ?", "")
+                :gsub(" ?CANCEL TAG", "")
+                :gsub("WAVING BLACK FLAG ?", "flag: ")
+        )
         make_name(table.concat(char_hexes, "-"))
     end
 
@@ -474,8 +479,9 @@ context.stepwise(function() print(xpcall(function()
     -- Process each SVG file in the input directory
     local paths = memoized_table()
     dir.globpattern(document.getargument("in"), "/*.svg$", true, paths)
+    table.sort(paths)
 
-    for _, path in table.sortedpairs(paths) do
+    for _, path in ipairs(paths) do
         process(path)
     end
 end, debug.traceback)) end)

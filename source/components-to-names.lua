@@ -98,6 +98,8 @@ local function add_name(char, name, retention)
             "”",
             "’",
             " skin tone",
+            "tag latin small letter ",
+            "cancel tag",
         }
     )
     if shortened ~= name then
