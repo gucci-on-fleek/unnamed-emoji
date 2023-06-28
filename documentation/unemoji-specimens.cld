@@ -14,7 +14,6 @@ luatex.wrapup(function()
     )
 end)
 
-
 context.stepwise(function() print(xpcall(function()
 
 context.usemodule { "unnamed-emoji" }
@@ -37,39 +36,19 @@ table.sort(known_fonts)
 
 local all_chars = {}
 for font, t in table.sortedpairs(unemoji.chars) do
-    local font_chars = {}
     for name, t in table.sortedpairs(t) do
-        local obj = t.char_obj
-        local by_obj = font_chars[obj] or {}
-        font_chars[obj] = by_obj
+        local unicode = t.unicode
 
-        by_obj[#by_obj+1] = name
-    end
-
-    for obj, chars in table.sortedpairs(font_chars) do
-        local key
-        for i, char in ipairs(chars) do
-            local success, first, second = pcall(utf8.codepoint, char, 1, -1)
-            if success and
-               ((first > 255 and first ~= 8220) or
-                (second and second > 255 and second ~= 8221))
-            then
-                key = char:gsub("\u{fe0f}", "")
-                break
-            end
-        end
-
-        if key then
-            local current = all_chars[key] or {}
-            all_chars[key] = current
+        if unicode then
+            local current = all_chars[unicode] or {}
+            all_chars[unicode] = current
 
             local fonts = current.fonts or {}
             current.fonts = fonts
             table.merge(fonts, { [file.nameonly(font)] = true })
 
-            local found = current.found or {}
-            current.found = found
-            table.merge(found, table.tohash(chars))
+            current.found = current.found or {}
+            current.found[name] = true
         end
     end
 end
@@ -98,7 +77,7 @@ for char, data in table.sortedpairs(all_chars) do
 
     context.NC { nc = tostring(#known_fonts) }
     for name, _ in table.sortedpairs(data.found) do
-        if not math.tointeger(name) and
+        if not tonumber(name, 10) and
            name ~= char
         then
             context.verbatim(name)
@@ -106,14 +85,8 @@ for char, data in table.sortedpairs(all_chars) do
         end
     end
 
-    local codepoint <const> = utf8.codepoint(char)
-    local hex <const> = string.format("%x", codepoint)
-    context.verbatim(tostring(codepoint))
-    context.qquad()
-
-    if math.tointeger(hex) then
-        context.verbatim(hex)
-        context.qquad()
+    if utf8.len(char) == 1 then
+        context.verbatim(tostring(utf8.codepoint(char)))
     end
 
     context.NC() context.NR()
