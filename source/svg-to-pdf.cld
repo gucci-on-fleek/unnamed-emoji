@@ -34,10 +34,16 @@ local dest_formatter <const> =
     string.formatters["<< /D [ %i 0 R /XYZ 0 0 null ] >>"]
 
 -- Set the fill/draw colour in the PDF
-local fill_draw_colour <const> =
-    string.formatters["%s RG %s rg"]
+local colour_tuple <const> = string.formatters["%0.2f %0.2f %0.2f"]
+local fill_draw_colour <const> = string.formatters["%s RG %s rg"]
 
+-- Misc. Formatters
 local glyph_licence <const> = string.formatters["%%%% %s\n%s"]
+local hex_component <const> = string.formatters["%04x"]
+
+-- Unicode
+local ZWJ <const> = 0x200d
+local EMOJI_VAR <const> = 0xfe0f
 
 -- Modules
 local components_to_names = require "components-to-names"
@@ -146,23 +152,17 @@ end)
 --- Add the provided glyph to the current font.
 ---
 --- @param codepoint integer The Unicode codepoint to register
---- @param components table<string> Codepoints to use for /ToUnicode
+--- @param unicode string The glyph as a Unicode string
 --- @param width number The width of the glyph in sp's
 --- @param height number The height of the glyph in sp's
 --- @param code string The raw PDF stream to use for the glyph
-local function make_glyph(codepoint, components, width, height, code)
-    -- Convert the codepoints to integers
-    local unicode = {}
-    for _, component in ipairs(components) do
-        unicode[#unicode+1] = tonumber(component, 16)
-    end
-
+local function make_glyph(codepoint, unicode, width, height, code)
     -- Data for this glyph
     local spec <const> = {
         width   = width,
         height  = height,
         depth   = 0,
-        unicode = unicode,
+        unicode = { utf8.codepoint(unicode or "", 1, -1, true) },
         code = (width / bp_to_sp) .. " 0 d0 " .. code,
     }
     -- Data for the original font
@@ -239,8 +239,7 @@ if not font.keep_effects then utilities.sequencers.prependaction(
             end
 
             -- Add the average value as a solid fill/outline
-            local values <const> = string.format(
-                "%0.2f %0.2f %0.2f",
+            local values <const> = colour_tuple(
                 average(rs), average(gs), average(bs)
             )
             before[2] = fill_draw_colour(values, values)
@@ -304,11 +303,16 @@ local function process(name)
 
     local char <const> = utf8.char(table.unpack(codepoint_dec))
 
+    local codepoint = utf8.codepoint(char)
+
+    -- Skip PUA characters
+    if characters.data[codepoint].description:match("PRIVATE") then
+        return
+    end
+
     -- Each codepoint in a font can only have a single definition, so we use a
     -- codepoint from the PUA if we have duplicates.
-    local codepoint
     if not chars[char] and utf8.len(char) == 1 then
-        codepoint = utf8.codepoint(char)
         chars[char] = true
     else
         codepoint = fonts.helpers.sharedprivates[table.concat(components, "-")]
@@ -396,7 +400,7 @@ local function process(name)
     -- Add the glyph to the font
     make_glyph(
         codepoint,
-        components,
+        char,
         width * bp_to_sp,
         height * bp_to_sp,
         pdf_code
@@ -422,12 +426,12 @@ local function process(name)
 
         for _, code in ipairs(components) do
             code = tonumber(code, 16)
-            if code ~= 0xfe0f then
-                if code ~= 0x200d then -- Zero-width joiner, ignore
+            if code ~= EMOJI_VAR then
+                if code ~= ZWJ then
                     table.insert(char_names, characters.data[code].description)
                 end
 
-                table.insert(char_hexes, string.format("%x", code))
+                table.insert(char_hexes, hex_component(code))
             end
         end
 

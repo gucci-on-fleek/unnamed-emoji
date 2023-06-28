@@ -159,13 +159,20 @@ local font = {
                 file.collapsepath(dirname .. "/../../metadata.json")
             )
 
+            local unicode
             if metadata.unicodeSkintones then
                 local tone <const> = file.nameonly(
                     file.collapsepath(dirname .. "/..")
                 )
-                return metadata.unicodeSkintones[fluent_skin[tone]]:split(" ")
+                unicode = metadata.unicodeSkintones[fluent_skin[tone]]
             else
-                return metadata.unicode:split(" ")
+                unicode = metadata.unicode
+            end
+
+            if unicode then
+                return unicode:split(" ")
+            else
+                return {}
             end
         end,
 

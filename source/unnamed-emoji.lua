@@ -9,13 +9,14 @@
 local getfromarray = pdfe.getfromarray
 local getfromdictionary = pdfe.getfromdictionary
 local getfromreference = pdfe.getfromreference
+local get_codepoint = utf8.codepoint
+local pcall = pcall
 local l_fonts = fonts
 local l_type = type
 local lpeg_match = lpeg.match
 local pairs = pairs
 local select = select
 local string_char = string.char
-local tointeger = math.tointeger
 local tonumber = tonumber
 local yield = coroutine.yield
 
@@ -24,6 +25,8 @@ local bp_to_sp = tex.sp("1bp")
 local height = tex.sp("10bp")
 local PDF_STRING = 6
 local t3_scale = 0.093
+local ASCII_LAST = 0x7f
+local OPEN_QUOTE = 0x201c
 
 
 -----------------------------------------
@@ -261,6 +264,27 @@ local stream_object = memoized_table(function(stream)
 end)
 
 
+--- Adds any extra names to the character's data.
+---
+--- @param name string
+--- @param char table<string, string|integer>
+local function add_extra_names(name, char)
+    local success, first, second = pcall(get_codepoint, name, 1, -1)
+    if success and
+       ((first > ASCII_LAST and first ~= OPEN_QUOTE) or
+        (second and second > ASCII_LAST and second ~= OPEN_QUOTE) or
+        utf8.len(name) == 1)
+    then
+        char.unicode = name:gsub("\u{fe0f}", "")
+    end
+
+    local codepoint = tonumber(name, 10)
+    if codepoint then
+        char.codepoint = codepoint
+    end
+end
+
+
 ---------------------------
 --- Font/PDF processing ---
 ---------------------------
@@ -286,7 +310,9 @@ local function make_fonts(pdf_name, characters)
                 width = char.width * bp_to_sp,
                 height = height,
                 depth = 0,
-                tounicode = char.codepoint,
+                tounicode = {
+                    get_codepoint(char.unicode or "", 1, -1, true)
+                },
             }
         end
 
@@ -334,9 +360,7 @@ local chars = memoized_table(function(filename)
         local dest_key = tostring(dest)
         local prev_dest = dests[dest_key]
         if prev_dest then
-            if tointeger(name) then
-                prev_dest.codepoint = tointeger(name)
-            end
+            add_extra_names(name, prev_dest)
             pdf_font[name] = prev_dest
 
         -- Otherwise, we need to parse the page's contents
@@ -377,8 +401,9 @@ local chars = memoized_table(function(filename)
                     inner_slot = slot,
                     char_obj = stream_data[font.CharProcs["I" .. slot]],
                     width = font.Widths[slot + 1],
-                    codepoint = tointeger(name),
                 }
+
+                add_extra_names(name, char)
 
                 -- Save this data in multiple tables for easy access
                 pdf_font[name] = char
@@ -420,7 +445,7 @@ local load_font = memoized_table(function(pdf_font)
     -- Make the VF metadata for all characters
     local define_chars = {}
     for name, char in pairs(chars[pdf_font]) do
-        name = tointeger(name)
+        name = tonumber(name, 10)
         if name then
             local id = fonts[pdf_font][char.inner_fontname]
             define_chars[name] = {
@@ -484,24 +509,18 @@ if context then
     --- Add the provided glyph to the current font.
     ---
     --- @param codepoint integer The Unicode codepoint to register
-    --- @param components table<string> Codepoints to use for /ToUnicode
+    --- @param unicode string The glyph as a Unicode string
     --- @param width number The width of the glyph in sp's
     --- @param height number The height of the glyph in sp's
     --- @param code string The raw PDF stream to use for the glyph
     --- @param id integer The font id
-    make_glyph = function (codepoint, components, width, height, code, id)
-        -- Convert the codepoints to integers
-        local unicode = {}
-        for _, component in ipairs(components) do
-            unicode[#unicode+1] = tonumber(component, 16)
-        end
-
+    make_glyph = function (codepoint, unicode, width, height, code, id)
         -- Data for this glyph
         local spec = {
             width   = width,
             height  = height,
             depth   = 0,
-            unicode = unicode,
+            unicode = { get_codepoint(unicode or "", 1, -1, true) },
             code = code,
         }
         -- Data for the original font
@@ -532,7 +551,7 @@ if context then
                 if char.codepoint then
                     make_glyph(
                         char.codepoint,
-                        { string.format("%x", char.codepoint) },
+                        char.unicode,
                         char.width * bp_to_sp,
                         height,
                         char.char_obj,
@@ -570,7 +589,7 @@ register_tex_cmd(
 local function print_char(fontname, char_name)
     fontname = get_font_path(fontname)
     local char = chars[fontname][char_name] or
-                 chars[fontname][tostring(utf8.codepoint(char_name))]
+                 chars[fontname][tostring(get_codepoint(char_name))]
 
     -- Directly write the glyph node, without any help from TeX
     if char and char.codepoint then

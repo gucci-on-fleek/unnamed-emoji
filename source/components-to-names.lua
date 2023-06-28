@@ -23,7 +23,8 @@ local utf_char <const> = utf8.char
 -- ConTeXt-specific
 local character_data <const> = characters.data
 local dec_str <const> = string.formatters["%d"]
-local hex_str <const> = string.formatters["0x%x"]
+local hex_single <const> = string.formatters["0x%04x"]
+local hex_component <const> = string.formatters["%04x"]
 local json <const> = require("util-jsn")
 local lpeg_match <const> = lpeg.match
 local lpeg_P <const> = lpeg.P
@@ -34,6 +35,10 @@ local sortedpairs <const> = table.sortedpairs
 local ALWAYS <const> = "always"
 local NEVER <const> = "never"
 local UNIQUE <const> = "unique"
+
+local SKIN_FIRST <const> = 0x1f3fb
+local SKIN_LAST <const> = 0x1f3ff
+local ZWJ <const> = 0x200d
 
 
 ---------------------------------
@@ -82,11 +87,11 @@ local by_name <const> = {}
 --- @param retention "always"|"never"|"unique" When to retain the character
 local function add_name(char, name, retention)
     -- Make everything lowercase
-    name = lowercase(name)
+    name = lowercase(name):gsub("\u{fe0f}", "")
 
     -- Remove some superfluous text to make input easier
     local shortened <const> = deleter(
-        lowercase(name),
+        name,
         {
             "flag: ",
             "“",
@@ -137,7 +142,7 @@ for _, annotation in ipairs(annotations) do  -- Loop over each file
             local code <const> = codepoint(char)
             add_name(char, character_data[code].description, ALWAYS)
             add_name(char, dec_str(code), UNIQUE)
-            add_name(char, hex_str(code), ALWAYS)
+            add_name(char, hex_single(code), ALWAYS)
 
         else -- Composed/ligated characters
             local char_names <const> = {}
@@ -145,15 +150,15 @@ for _, annotation in ipairs(annotations) do  -- Loop over each file
 
             for _, code in codes(char) do
                 -- We check to see if there are any skin tone modifiers
-                if code >= 0x1f3fb and code <= 0x1f3ff then
+                if code >= SKIN_FIRST and code <= SKIN_LAST then
                     skin_tone = true
                 end
 
-                if code ~= 0x200d then -- Zero-width joiner, ignore
+                if code ~= ZWJ then -- Zero-width joiner, ignore
                     insert(char_names, character_data[code].description)
                 end
 
-                insert(char_hexes, hex_str(code))
+                insert(char_hexes, hex_component(code))
             end
 
             add_name(char, concat(char_names, " "), ALWAYS)
@@ -183,7 +188,7 @@ for codepoint, data in pairs(character_data) do
     add_name(char, char, NEVER)
     add_name(char, data.description, ALWAYS)
     add_name(char, dec_str(codepoint), UNIQUE)
-    add_name(char, hex_str(codepoint), ALWAYS)
+    add_name(char, hex_single(codepoint), ALWAYS)
     if data.adobename then
         add_name(char, data.adobename, UNIQUE)
     end
@@ -193,7 +198,6 @@ end
 -- Now map each character to a list of associated names
 local by_char <const> = {}
 for name, glyphs in sortedpairs(by_name) do
-    name = name:gsub("^0x", "")
     local first <const>, value <const> = next(glyphs)
 
     -- If there's just a single "unique" name, then use it
@@ -226,10 +230,14 @@ return function(components)
         if type(components) == "string" then
             return by_char[components] or {}
         elseif type(components) == "table" then
-            local key <const> = "0x" .. concat(
-                filter(components, function(v) return v ~= "fe0f" end),
-                "-"
-            )
+            components = filter(components, function(v) return v ~= "fe0f" end)
+
+            local key = concat(components, "-")
+
+            if #components == 1 then
+                key = "0x" .. key
+            end
+
             return by_char[next(by_name[key])]
         end
     end)
