@@ -6,8 +6,9 @@
 
 # `unnamed-emoji`
 
-An experimental emoji package for (La)TeX. Name to be chosen later. Not
-very polished yet, but mostly functional.
+\Unemoji/ is an emoji package for LaTeX, ConTeXt, Plain TeX, and OpTeX.
+It natively supports pdfTeX and LuaTeX, and (with a patch) supports
+XeTeX and any other TeX engine using `dvipdfmx`.
 
 See
 [the manual](https://github.com/gucci-on-fleek/unnamed-emoji/releases/latest/download/unnamed-emoji-manual.pdf)
@@ -15,89 +16,16 @@ for complete usage details or the
 [font specimens](https://github.com/gucci-on-fleek/unnamed-emoji/releases/latest/download/unnamed-emoji-specimens.pdf)
 for a full listing of fonts and characters.
 
-## Features
+## Example
 
-- Directly supports pdfLaTeX, LuaLaTeX, Plain pdfTeX, and Plain LuaTeX.
-
-- Supports XeLaTeX, Plain XeTeX, and any TeX engine with `dvipdfmx`,
-  provided that you use a [patched version of
-  `dvipdfmx`](dvipdfmx.patch).
-
-- Only needs a single PDF file per font to supply all characters. And
-  all the required metadata is in the PDF file itself, so no additional
-  files are needed.
-
-- Only includes a single copy of each character in your document no
-  matter how many times you use it, so your documents are kept small.
-
-- Subsets the font when you include it, which also keeps your documents
-  small.
-
-- Doesn't need shell escape or any external tools.
-
-- Adds fairly little overhead, so compile times are kept fast.
-
-- All characters are properly Unicode-encoded, so you can copy-and-paste
-  them from your compiled documents, even with pdfTeX.
-
-- Supports ligated/composed emoji.
-
-- Currently includes Noto Emoji (3458 characters), Twemoji (3689
-  characters), FxEmoji (979 characters), OpenMoji (4094 characters), and
-  EmojiOne (1832 characters), for a total of 14 052 characters. And more
-  fonts can be easily added.
-
-## Examples
-
-### LaTeX
 ```latex
 \documentclass{article}
-
 \usepackage{unnamed-emoji}
 
 \begin{document}
-    Duck \emoji{duck} another \emoji{1f986} again \emoji{129414}.
-
-    Manually select a font: \emoji[twemoji]{duck}.
-
-    % LuaTeX-only
-    Duck \emoji{🦆}.
+    \emoji{goose}          \emoji{🦢}
+    \emoji[openmoji]{duck} \emoji{0x1f427}
 \end{document}
-```
-
-### Plain TeX
-```tex
-\input unnamed-emoji
-
-Duck \emoji{duck} another \emoji{1f986} again \emoji{129414}.
-
-Manually select a font: {\def\emojifont{twemoji}\emoji{duck}}.
-
-% LuaTeX-only
-Duck \emoji{🦆}.
-
-\bye
-```
-
-## Missing features
-
-- No support for direct Unicode input with pdfTeX. This should also be
-  fixable.
-
-- Size changing doesn't work quite yet.
-
-## Generating the PDF-fonts
-
-_(Advanced users only)_
-
-Make sure that `qpdf` and ConTeXt LMTX are installed. Next, uncomment
-the definition of `lpdf.registerfontmethod` in the ConTeXt base file
-`lpdf-emb.lmt`.
-
-Then, run the following command:
-
-```sh
-./svg-to-pdf.cld --in=/path/to/svg/files/ --font=font --result=output-name
 ```
 
 ## Patching `dvipdfmx`

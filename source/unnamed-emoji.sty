@@ -171,8 +171,10 @@
 }
 
 % Public interface
+\cs_generate_variant:Nn \__unemoji_print:nn { ne }
+
 \NewDocumentCommand { \emoji } { O{noto-emoji} m } {
-    \__unemoji_print:nn { #1 } { #2 }
+    \__unemoji_print:ne { #1 } { \tl_trim_spaces:n { #2 } }
 }
 
 \endinput

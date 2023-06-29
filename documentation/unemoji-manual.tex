@@ -32,13 +32,56 @@
     github=https://github.com/gucci-on-fleek/unnamed-emoji,
 ]
 
-\Unemoji/ is an experimental emoji package for \LaTeX{}, \ConTeXt{},
-Plain~\TeX{}, and OpTeX. It natively supports \pdfTeX{} and \LuaTeX{}, and can
-support \XeTeX{} and any other \TeX{} engine using \type{dvipdfmx} with a
-patched version of \type{dvipdfmx}.
+\Unemoji/ is an emoji package for \LaTeX{}, \ConTeXt{}, Plain~\TeX{}, and OpTeX.
+It natively supports \pdfTeX{} and \LuaTeX{}, and (with a patch) supports
+\XeTeX{} and any other \TeX{} engine using \type{dvipdfmx}.
+
+\section{Quick Start}
+
+\startlatex[prebuffer=, postbuffer=]
+\documentclass{article}
+\usepackage{unnamed-emoji}
+
+\begin{document}
+    \emoji{goose}          \emoji{🦢}
+    \emoji[openmoji]{duck} \emoji{0x1f427}
+\end{document}
+\stoplatex
 
 \subject{Contents}
 \placecontent[criterium=all]
+
+\section{Features}
+
+\startitemize
+    \item \Unemoji/ has native support for the formats \LaTeX{}, \ConTeXt{},
+          Plain~\TeX{}, and~\OpTeX{}.
+
+    \item \Unemoji/ has native support for the engines \pdfTeX{}, \LuaTeX{},
+          and~\LuaMetaTeX{}.
+
+    \item With a patched \type{dvipdfmx}, \unemoji/ directly supports \XeTeX{},
+          and supports Knuth's original \TeX{} and ($\varepsilon$-)(u)p\TeX{}
+          when processed with \type{dvipdfmx}.
+
+    \item \Unemoji/ only requires a single \acronym{PDF} file for each emoji
+          font, without any external metadata files.
+
+    \item \Unemoji/ only includes a single copy of each character in your
+          document no matter how many times you use it, so there is a
+          minimal effect on file size.
+
+    \item \Unemoji/ doesn't use shell-escape or any external programs.
+
+    \item All characters are properly encoded in the \acronym{PDF} file, so
+          searching, copying, and pasting works as expected.
+
+    \item \Unemoji/ currently packages 7 fonts, with 4\,102 unique characters
+          and 17\,922 characters in total.
+
+    \item \Unemoji/ supports input by emoji name, codepoint, or by inserting
+          the Unicode character directly.
+\stopitemize
 
 \section{Loading}
 
@@ -98,22 +141,28 @@ Loading the package is as follows:
 
 \section{Input Formats}
 
-There are four different ways to select any given emoji.
+There are multiple methods to input any given emoji. Despite how complex it may
+appear, you can usually type in anything sensible and \unemoji/ will find the
+correct emoji.
 
 \subsection{Name}
 
-First, you can select an emoji by giving its officially-assigned Unicode name:
+First, you can select an emoji by giving its officially-assigned Unicode
+character name:
 
 \startlatex[]
 \emoji{duck}
 \stoplatex
+
+In theory, this would be the perfect input method; in practice, the Unicode
+character names are excessively verbose and often misleading.
 
 \subsection{Hexadecimal}
 
 You can also select an emoji by its Unicode codepoint in hexadecimal:
 
 \startlatex[]
-\emoji{1f986}
+\emoji{0x1f986}
 \stoplatex
 
 \subsection{Decimal}
@@ -126,11 +175,63 @@ Or in decimal (base-10):
 
 \subsection{Unicode}
 
-Finally, if you are using Lua\TeX{}, you can enter the Unicode character
-directly:
+You can also enter the Unicode character directly:
 
 \startlatex[]
-\emoji{🦆}  % LuaTeX Only!
+\emoji{🦆}
+\stoplatex
+
+\subsection{\acronym{CLDR} Names}
+
+You can also use any unambiguous \acronym{CLDR} name:
+
+\startlatex[]
+\emoji{corn}
+\emoji{corn on the cob}
+\emoji{ear of corn}
+\emoji{ear of maize}
+\emoji{maize}
+\emoji{maze}
+\emoji{sweetcorn}
+\stoplatex
+
+\section{Sequence Names}
+
+Many emoji are composed of multiple Unicode codepoints. \Unemoji/ has full
+support for these ligated/composed emoji sequences.
+
+\subsection{Name}
+
+One option is to type the names of all components of the emoji, separated by
+spaces. Here, any \acronym{ZWJ} characters are omitted.
+
+\startlatex[]
+\emoji{
+    man
+    emoji modifier fitzpatrick type-4
+    emoji component curly hair
+}
+\stoplatex
+
+These names tend to be very long, so you'll probably want to use the other
+options.
+
+\subsection{Hexadecimal}
+
+You can also hexadecimal codepoints of the emoji's
+components, separated by hyphens. For this option, any \acronym{ZWJ} characters
+\emph{must} be included.
+
+\startlatex[]
+\emoji{1f468-1f3fd-200d-1f9b1}
+\stoplatex
+
+\subsection{\acronym{CLDR} Names}
+
+Easiest of all, you can use any unambiguous \acronym{CLDR} name:
+
+\startlatex[]
+\emoji{man: medium skin tone, curly hair}
 \stoplatex
 
 \section{Font Selection}
@@ -140,22 +241,35 @@ demonstration of how to select the font as well as a sample glyph from each
 currently-supported font.
 
 \subsection{\LaTeX{}/\\\ConTeXt{}/\\\OpTeX{}\phantom{/}}
-\startlatex[figureparams={width=0.29\textwidth}]
-\begin{tabular}{r@{: }l}
-    \texttt{noto-emoji} &
-    \emoji[noto-emoji]{1f638} \\
+\startbuffer[pre]
+\documentclass[border=1pt]{standalone}
+\usepackage{unnamed-emoji}
+\usepackage{array}
+\begin{document}
+\stopbuffer
+
+\startlatex[figureparams={width=0.29\textwidth}, prebuffer=pre]
+\begin{tabular}{>{\tiny\ttfamily}r@{\ }l}
+    emojione &
+    \emoji[emojione]{blowfish} \\
     %
-    \texttt{twemoji} &
-    \emoji[twemoji]{1f638} \\
+    fluent-flat &
+    \emoji[fluent-flat]{blowfish} \\
     %
-    \texttt{fxemoji} &
-    \emoji[fxemoji]{1f638} \\
+    fxemoji &
+    \emoji[fxemoji]{blowfish} \\
     %
-    \texttt{openmoji} &
-    \emoji[openmoji]{1f638} \\
+    noto-blob &
+    \emoji[noto-blob]{blowfish} \\
     %
-    \texttt{emojione} &
-    \emoji[emojione]{1f638} \\
+    noto-emoji &
+    \emoji[noto-emoji]{blowfish} \\
+    %
+    openmoji &
+    \emoji[openmoji]{blowfish} \\
+    %
+    twemoji &
+    \emoji[twemoji]{blowfish} \\
 \end{tabular}
 \stoplatex
 
@@ -179,54 +293,37 @@ currently-supported font.
     postbuffer=post,
     figureparams={width=0.29\textwidth}
 ]
-\halign{\hfil\tt#\unskip:&#\hfil\cr
-    noto-emoji &
-    \def\emojifont{noto-emoji}
-    \emoji{1f638} \cr
+\halign{\hfil\tt#\unskip\ &#\hfil\cr
+    emojione &
+    \def\emojifont{emojione}
+    \emoji{0x1f628} \cr
     %
-    twemoji &
-    \def\emojifont{twemoji}
-    \emoji{1f638} \cr
+    fluent-flat &
+    \def\emojifont{fluent-flat}
+    \emoji{0x1f628} \cr
     %
     fxemoji &
     \def\emojifont{fxemoji}
-    \emoji{1f638} \cr
+    \emoji{0x1f628} \cr
+    %
+    noto-blob &
+    \def\emojifont{noto-blob}
+    \emoji{0x1f628} \cr
+    %
+    noto-emoji &
+    \def\emojifont{noto-emoji}
+    \emoji{0x1f628} \cr
     %
     openmoji &
     \def\emojifont{openmoji}
-    \emoji{1f638} \cr
+    \emoji{0x1f628} \cr
     %
-    emojione &
-    \def\emojifont{emojione}
-    \emoji{1f638} \cr
+    twemoji &
+    \def\emojifont{twemoji}
+    \emoji{0x1f628} \cr
 }
 \stoplatex
 
-\section{Composed Emoji}
-
-Many emoji are composed of multiple Unicode codepoints. \Unemoji/ supports
-these, although the input format is (currently) quite cumbersome.
-
-\subsection{Name}
-
-One option is to type the names of all components of the emoji, separated by
-spaces. For this option, any \acronym{ZWJ} characters are omitted.
-
-\startlatex[]
-\emoji[twemoji]
-  {regional indicator symbol letter c
-   regional indicator symbol letter a}
-\stoplatex
-
-\subsection{Hexadecimal}
-
-The other option is to type the hexadecimal codepoints of the emoji's
-components, separated by hyphens. For this option, any \acronym{ZWJ} characters
-\emph{must} be included.
-
-\startlatex[]
-\emoji[twemoji]{1f1e8-1f1e6}
-\stoplatex
 
 \section{Available Characters}
 
@@ -328,6 +425,9 @@ If want to offer any improvements to the code below, please open an issue or a
 
 \subsection{font-config.lua}
 \typeLUAfile{../source/font-config.lua}
+
+\subsection{components-to-names.lua}
+\typeLUAfile{../source/components-to-names.lua}
 
 \subsection{unnamed-emoji.sty}
 \typeTEXfile{../source/unnamed-emoji.sty}

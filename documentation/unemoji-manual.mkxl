@@ -219,7 +219,7 @@ interfaces.implement {
 
         unemoji.make_glyph(
             char.codepoint,
-            { string.format("%x", char.codepoint) },
+            char.unicode,
             char.width * tex.sp("1bp"),
             height,
             char.char_obj,
@@ -233,6 +233,7 @@ interfaces.implement {
 \begingroup
     \setupbodyfont[tt,9.5pt]
     \addemojitofont{duck}
+    \addemojitofont{swan}
 \endgroup
 
 \protect
