@@ -266,7 +266,7 @@ local used_names <const> = {}
 local function make_name(name)
     if not used_names[name] then
         lpdf.registerdestination(
-            "emoji" .. tostring(name):lower(),
+            "emoji" .. tostring(name):lower():gsub("\u{fe0f}", ""),
             dests[tex.count.realpageno]
         )
         used_names[name] = true
@@ -464,13 +464,6 @@ local function process(name)
     end
 end
 
--- Compress and linearize the PDF when we're done
-luatex.wrapup(function()
-    os.execute(
-        "qpdf --verbose --linearize --compress-streams=y --recompress-flate --compression-level=9 --object-streams=generate --remove-unreferenced-resources=yes --replace-input " ..
-        file.replacesuffix(environment.jobname, "pdf")
-    )
-end)
 
 context.starttext()
 -- `context.stepwise` + `context.step` ensures that the Lua and TeX code run in
@@ -479,6 +472,7 @@ context.stepwise(function() print(xpcall(function()
     -- Process each SVG file in the input directory
     local paths = memoized_table()
     dir.globpattern(document.getargument("in"), "/*.svg$", true, paths)
+    setmetatable(paths, nil)
     table.sort(paths)
 
     for _, path in ipairs(paths) do

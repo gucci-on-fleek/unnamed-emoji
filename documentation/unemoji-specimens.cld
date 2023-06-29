@@ -7,13 +7,6 @@
 -- SPDX-License-Identifier: MPL-2.0+
 -- SPDX-FileCopyrightText: 2023 Max Chernoff
 
-luatex.wrapup(function()
-    os.execute(
-        "qpdf --verbose --linearize --compress-streams=y --recompress-flate --compression-level=9 --object-streams=generate --remove-unreferenced-resources=yes --replace-input " ..
-        file.replacesuffix(environment.jobname, "pdf")
-    )
-end)
-
 context.stepwise(function() print(xpcall(function()
 
 context.usemodule { "unnamed-emoji" }

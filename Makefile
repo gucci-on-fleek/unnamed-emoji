@@ -17,6 +17,16 @@ default:
 
 
 # Build the font files
+qpdf := qpdf \
+	--verbose \
+	--linearize \
+	--compress-streams=y \
+	--recompress-flate \
+	--compression-level=9 \
+	--object-streams=generate \
+	--remove-unreferenced-resources=yes \
+	--replace-input
+
 define build_font =
 temp="$$(mktemp -d)"
 cd "$$temp"
@@ -26,6 +36,7 @@ ${CURDIR}/source/svg-to-pdf.cld \
 	--in=${abspath $<} \
 	--font=${basename ${notdir $@}} \
 	--cldr=${CURDIR}/third-party/cldr-json/
+${qpdf} ./svg-to-pdf.pdf
 mv ./svg-to-pdf.pdf ${abspath $@}
 
 rm -r "$$temp"
@@ -69,6 +80,7 @@ manual: documentation/unemoji-manual.pdf ;
 documentation/unemoji-specimens.pdf: documentation/unemoji-specimens.cld
 	cd ${dir $<}
 	./${notdir $<}
+	${qpdf} ${notdir $@}
 
 .PHONY: specimens
 specimens: documentation/unemoji-specimens.pdf ;
@@ -100,7 +112,7 @@ version_run := git ls-files ':!:*.pdf' ':!:texmf' ':!:third-party' | xargs sed -
 
 .PHONY: update-version
 update-version:
-	${version_run} "/%%[v]ersion/ s/[[:digit:]]\.[[:digit:]]\.[[:digit:]]/${VERSION}/"
+	${version_run} "/%%[v]ersion/ s/[[:digit:]]\.[[:digit:]]\.[[:digit:]]/${version}/"
 	${version_run} "/%%[d]ashdate/ s/[[:digit:]]{4}.[[:digit:]]{2}.[[:digit:]]{2}/$$(date -I)/"
 	${version_run} "/%%[s]lashdate/ s|[[:digit:]]{4}.[[:digit:]]{2}.[[:digit:]]{2}|$$(date +%Y/%m/%d)|"
 
