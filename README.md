@@ -6,7 +6,7 @@
 
 # `unnamed-emoji`
 
-\Unemoji/ is an emoji package for LaTeX, ConTeXt, Plain TeX, and OpTeX.
+Unnamed-emoji is an emoji package for LaTeX, ConTeXt, Plain TeX, and OpTeX.
 It natively supports pdfTeX and LuaTeX, and (with a patch) supports
 XeTeX and any other TeX engine using `dvipdfmx`.
 

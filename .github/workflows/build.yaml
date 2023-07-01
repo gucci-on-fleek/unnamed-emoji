@@ -36,6 +36,7 @@ jobs:
             standalone
             tex-gyre
             tex-gyre-math
+            tools
 
       - name: Build the documentation
         run: |
