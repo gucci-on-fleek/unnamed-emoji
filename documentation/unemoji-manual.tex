@@ -127,7 +127,7 @@ Loading the package is as follows:
 
 \subsection{\OpTeX{}}
 \startbuffer[pre]
-\fontfam[LMfonts]
+\fontfam[lm]
 \margins/1 (1,1) (0,0,0,0)em
 \parindent=0pt
 \stopbuffer
@@ -324,6 +324,76 @@ currently-supported font.
 }
 \stoplatex
 
+\section{Default Font}
+
+\Unemoji/ defaults to using \italic{Noto Emoji}, but you can change this to any
+of the supported fonts.
+
+\subsection{\LaTeX{}}
+\startlatex[prebuffer=,]
+\documentclass{article}
+\usepackage[font=noto-blob]{unnamed-emoji}
+
+\begin{document}
+    \emoji{girl}
+    \emoji[openmoji]{girl}
+    \unemojisetup{font=emojione}
+    \emoji{girl}
+\end{document}
+\stoplatex
+
+\subsection{\ConTeXt{}}
+\startlatex[engine=context,prebuffer=,postbuffer=]
+\usemodule[unnamed-emoji]
+\setupunemoji[font=noto-blob]
+
+\startTEXpage[offset=1pt]
+    \emoji{girl}
+    \emoji[openmoji]{girl}
+    \setupunemoji[font=emojione]
+    \emoji{girl}
+\stopTEXpage
+\stoplatex
+
+\subsection{Plain \TeX{}}
+\startbuffer[pre]
+\pdfhorigin=0in
+\pdfvorigin=0in
+\pdfpagewidth=3em%
+\pdfpageheight=\baselineskip
+\parindent=0pt
+\stopbuffer
+
+\startlatex[engine=pdftex,prebuffer=pre]
+\input unnamed-emoji
+\def\emojifont{noto-blob}
+
+\emoji{girl}
+{\def\emojifont{openmoji}\emoji{girl}}
+\def\emojifont{emojione}
+\emoji{girl}
+
+\bye
+\stoplatex
+
+\subsection{\OpTeX{}}
+\startbuffer[pre]
+\fontfam[lm]
+\margins/1 (3,1) (0,0,0,0)em
+\parindent=0pt
+\stopbuffer
+
+\startlatex[engine=optex,prebuffer=pre]
+\load[unnamed-emoji]
+\def\emojifont{noto-blob}
+
+\emoji{girl}
+\emoji[openmoji]{girl}
+\def\emojifont{emojione}
+\emoji{girl}
+
+\bye
+\stoplatex
 
 \section{Available Characters}
 
