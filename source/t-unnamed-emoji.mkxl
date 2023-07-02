@@ -1,10 +1,10 @@
 %D \module
 %D   [     file=t-unnamed-emoji,
-%D      version=0.1.0, %%version
+%D      version=0.1.1, %%version
 %D        title=unnamed-emoji,
 %D     subtitle=\ConTeXt module unnamed-emoji,
 %D       author=Max Chernoff,
-%D         date=2023-06-29, %%dashdate
+%D         date=2023-07-02, %%dashdate
 %D    copyright=Max Chernoff,
 %D      license=MPL-2.0+,
 %D          url=https://github.com/gucci-on-fleek/unnamed-emoji]
