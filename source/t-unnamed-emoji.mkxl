@@ -13,13 +13,17 @@
 
 \installnamespace{unemoji}
 
+\installcommandhandler \????unemoji {unemoji} \????unemoji
+
+\setupunemoji[font=noto-emoji]
+
 \ctxloadluafile{unnamed-emoji}
 
 \tolerant\def\emoji[#1]#:#2{%
     \ifparameter#1\or%
         \unemoji_print{#1}{#2}%
     \or%
-        \unemoji_print{noto-emoji}{#2}%
+        \unemoji_print{\unemojiparameter{font}}{#2}%
     \fi%
 }
 

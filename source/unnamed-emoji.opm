@@ -9,8 +9,16 @@
 \_pdfextension glyphtounicode{fake!}{0000}
 \_directlua{require "unnamed-emoji"}
 
-\_optdef\emoji[noto-emoji]#1{%
-    \.print{\_the\_opt}{#1}%
+\_newpublic\_def\emojifont{noto-emoji}
+
+\_optdef\emoji[emojifont]#1{%
+    \.print{%
+        \_ifcsname\_the\_opt\_endcsname%
+            \_lastnamedcs%
+        \_else%
+            \_the\_opt%
+        \_fi%
+    }{#1}%
 }
 
 \_endnamespace

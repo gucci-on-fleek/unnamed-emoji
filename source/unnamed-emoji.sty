@@ -36,6 +36,27 @@
 \prop_new:N \g__unemoji_fonts_prop
 
 
+%%%%%%%%%%
+%% Keys %%
+%%%%%%%%%%
+
+\keys_define:nn { unemoji } {
+    font .tl_set:N         = \g__unemoji_default_font_tl,
+    font .initial:n        = noto-emoji,
+    font .value_required:n = true,
+}
+
+\IfFormatAtLeastTF { 2022-06-01 } {
+    \ProcessKeyOptions [ unemoji ]
+}{
+    \RequirePackage { l3keys2e }
+    \ProcessKeysOptions { unemoji }
+}
+
+\NewDocumentCommand \unemojisetup { m } {
+    \keys_set:nn { unemoji } { #1 }
+}
+
 %%%%%%%%%%%%%
 %% Scaling %%
 %%%%%%%%%%%%%
@@ -205,11 +226,15 @@
 }
 
 % Public interface
-\cs_generate_variant:Nn \__unemoji_print:nn { ne }
+\cs_generate_variant:Nn \__unemoji_print:nn { ee }
 
-\NewDocumentCommand { \emoji } { O{noto-emoji} m } {
+\NewDocumentCommand { \emoji } { O{ default } m } {
     \__unemoji_scaled:n {
-        \__unemoji_print:ne { #1 } { \tl_trim_spaces:n { #2 } }
+        \__unemoji_print:ee {
+            \cs_if_exist_use:cF { g__unemoji_ #1 _font_tl } { #1 }
+        } {
+            \tl_trim_spaces:n { #2 }
+        }
     }
 }
 
