@@ -328,6 +328,7 @@ local function make_scaled_char(font_id, codepoint, scale)
     -- at the same position.
     local empty = last(char_nodes)
     empty.width = scale * glyph.width
+    empty.height = scale * glyph.height
 
     return char_nodes
 end
