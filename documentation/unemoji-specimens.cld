@@ -10,11 +10,6 @@
 context.stepwise(function() print(xpcall(function()
 
 context.usemodule { "unnamed-emoji" }
-context[[
-    \define[2]\emojicell{%
-        \strut\scale[s=10]{\emoji[#1]{#2}}%
-    }
-]]
 context.step()
 local unemoji = thirddata.unemoji
 
@@ -46,10 +41,16 @@ for font, t in table.sortedpairs(unemoji.chars) do
     end
 end
 
+context.setupbodyfontenvironment( { "default" }, { Z = 10 } )
+context.definefontsize { "Z" }
 
 context.setupTABLE( { frame = "off" })
-context.setupTABLE( { "row" }, { "each" }, { align = "center", style = "tt" })
+context.setupTABLE(
+    { "row" }, { "each" },
+    { align = "low, center", style = "tt" }
+)
 context.setupTABLE( { "row" }, { "first" }, { style = "ttbf" })
+context.setupTABLE( { "row" }, { "-2" }, { style = "tfZ" })
 context.setupTABLE( { "column" }, { "each" }, { width = "1.5in" })
 context.setupalign { "lesshyphenation", "verytolerant" }
 
@@ -87,7 +88,7 @@ for char, data in table.sortedpairs(all_chars) do
     for i, font in ipairs(known_fonts) do
         context.NC()
         if data.fonts[font] then
-            context.verbatim.emojicell(font, char)
+            context.verbatim.emoji({ font }, char)
         end
     end
     context.NC() context.NR()

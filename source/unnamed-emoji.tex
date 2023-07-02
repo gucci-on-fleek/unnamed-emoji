@@ -23,6 +23,34 @@
     }
 \fi
 
+% Get the required scale factor for the current font
+\def\unemoji@getscale{%
+    % Can't use \dimexpr since we can't guarantee e-TeX
+    \count0=100\relax% Multiplier since we can't use decimals
+    \dimen0=1ex\relax% Current font size
+    \multiply\count0 by \number\dimen0\relax%
+    \divide\count0 by 282168\relax% 1ex in cmr10
+    \edef\unemoji@scale|{% ``|'' at the end to prevent gobbling spaces
+        \expandafter\unemoji@decimal% Add the decimal point
+            \the\count0%
+        \end%
+    }%
+}
+
+% Adds a decimal point to a number
+% "100" --> "1.00"; "50" --> "0.50"
+\def\unemoji@decimal#1#2#3\end{%
+    \ifx\relax#3\relax%
+        0.#1#2%
+    \else
+        #1.#2#3%
+    \fi%
+}
+
+% The average width of an emoji across all fonts
+\newdimen\unemoji@width
+\unemoji@width=8.2696pt\relax
+
 % LuaTeX
 \ifx\directlua\undefined\else
     % Using luatexbase makes LaTeX interop much easier
@@ -36,28 +64,49 @@
 % pdfTeX
 \ifx\pdftexversion\undefined\else
     \def\unemoji@print#1#2{%
-        % See if we've already used this emoji
-        \ifcsname emoji@#1#2\endcsname%
-            % If so, just dereference the XObject
-            \pdfrefximage\csname emoji@#1#2\endcsname\relax%
-        \else%
-            % Otherwise, we first need to load page into an XObject
-            \pdfximage named{emoji#2}{unnamed-emoji-#1.pdf}%
-            % Save a reference to the XObject
-            \expandafter\mathchardef\csname emoji@#1#2\endcsname
-                =\pdflastximage\relax%
-            % And finally we can print it
-            \pdfrefximage\pdflastximage\relax%
-        \fi%
+        \unemoji@getscale% Save the scale factor for the current font
+        \setbox0=\hbox{% Place the emoji in a box
+            % See if we've already used this emoji
+            \ifcsname emoji@#1#2\endcsname%
+                % If so, just dereference the XObject
+                \pdfrefximage\csname emoji@#1#2\endcsname\relax%
+            \else%
+                % Otherwise, we first need to load page into an XObject
+                \pdfximage named{emoji#2}{unnamed-emoji-#1.pdf}%
+                % Save a reference to the XObject
+                \global\expandafter\mathchardef\csname emoji@#1#2\endcsname
+                    =\pdflastximage\relax%
+                % And finally we can print it
+                \pdfrefximage\pdflastximage\relax%
+            \fi%
+        }%
+        % Get the emoji's size if it were scaled up
+        \dimen0=\unemoji@scale|\dimexpr\wd0\relax%
+        % Zero out the box width so that \pdfsave and \pdfrestore are at the
+        % same location
+        \wd0=0pt\relax%
+        % Apply the scaling
+        \pdfsave%
+            \pdfsetmatrix{\unemoji@scale| 0 0 \unemoji@scale|}%
+            \box0%
+        \pdfrestore%
+        % Now add an empty box with the same width as the scaled emoji
+        \hbox to \dimen0{}%
     }
 \fi
 
 % XeTeX / dvipdfmx
 \ifx\unemoji@print\undefined
     \def\unemoji@print#1#2{%
-        \hbox to 10bp{% No metrics with dvipdfmx, so just guess 10bp
+        \unemoji@getscale%
+        \hbox to \unemoji@scale|\unemoji@width{% No metrics with dvipdfmx
             % Load and print the emoji, all at once
-            \special{pdf:image named "emoji#2" (unnamed-emoji-#1.pdf)}%
+            \special{
+                pdf:image
+                named "emoji#2"
+                scale \unemoji@scale|
+                (unnamed-emoji-#1.pdf)
+            }%
             \hss%
         }%
     }%

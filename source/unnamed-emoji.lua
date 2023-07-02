@@ -6,27 +6,30 @@
 -- Loads a PDF file into a Type 3 font.
 
 -- Save some globals
+local copy_list = node.copy_list or node.copylist
+local get_codepoint = utf8.codepoint
 local getfromarray = pdfe.getfromarray
 local getfromdictionary = pdfe.getfromdictionary
 local getfromreference = pdfe.getfromreference
-local get_codepoint = utf8.codepoint
-local pcall = pcall
 local l_fonts = fonts
 local l_type = type
+local last = node.slide
 local lpeg_match = lpeg.match
 local pairs = pairs
+local pcall = pcall
 local select = select
 local string_char = string.char
 local tonumber = tonumber
 local yield = coroutine.yield
 
 -- Define some useful constants
-local bp_to_sp = tex.sp("1bp")
-local height = tex.sp("10bp")
-local PDF_STRING = 6
-local t3_scale = 0.093
 local ASCII_LAST = 0x7f
+local bp_to_sp = tex.sp("1bp")
+local matrix_format = "%.2f 0 0 %.2f"
 local OPEN_QUOTE = 0x201c
+local PDF_STRING = 6
+local SCALE_FACTOR = 282168  -- 1ex in cmr10
+local t3_scale = 0.001
 
 
 -----------------------------------------
@@ -285,6 +288,51 @@ local function add_extra_names(name, char)
 end
 
 
+-- We need this semi-complex node list to properly scale a glyph.
+local char_nodes do
+    local save = node.new("whatsit", "pdf_save")
+    local matrix = node.new("whatsit", "pdf_setmatrix")
+    local glyph = node.new("glyph")
+    local box = node.hpack(glyph, 0, "exactly")
+    local restore = node.new("whatsit", "pdf_restore")
+    local empty = node.new("hlist")
+
+    save.next = matrix
+    matrix.next = box
+    box.next = restore
+    restore.next = empty
+
+    char_nodes = save
+end
+
+
+--- Gives the node list for a scaled character.
+---
+--- @param font_id integer The internal font ID
+--- @param codepoint integer The codepoint of the character
+--- @param scale number The scale factor
+--- @return node n The node list containing the scaled character
+local function make_scaled_char(font_id, codepoint, scale)
+    local char_nodes = copy_list(char_nodes)
+
+    -- Make the glyph
+    local glyph = char_nodes.next.next.list
+    glyph.char = codepoint
+    glyph.font = font_id
+
+    -- Make the scaling matrix
+    local matrix = char_nodes.next
+    matrix.data = string.format(matrix_format, scale, scale)
+
+    -- Width adjustments, since \pdfsave and \pdfrestore need to be
+    -- at the same position.
+    local empty = last(char_nodes)
+    empty.width = scale * glyph.width
+
+    return char_nodes
+end
+
+
 ---------------------------
 --- Font/PDF processing ---
 ---------------------------
@@ -308,7 +356,7 @@ local function make_fonts(pdf_name, characters)
         for slot, char in pairs(characters) do
             define_chars[slot] = {
                 width = char.width * bp_to_sp,
-                height = height,
+                height = char.height * bp_to_sp,
                 depth = 0,
                 tounicode = {
                     get_codepoint(char.unicode or "", 1, -1, true)
@@ -400,7 +448,8 @@ local chars = memoized_table(function(filename)
                     inner_fontname = fontname,
                     inner_slot = slot,
                     char_obj = stream_data[font.CharProcs["I" .. slot]],
-                    width = font.Widths[slot + 1],
+                    width = font.Widths[slot + 1] * font.FontMatrix[1] * 10,
+                    height = page.CropBox[4],
                 }
 
                 add_extra_names(name, char)
@@ -450,7 +499,7 @@ local load_font = memoized_table(function(pdf_font)
             local id = fonts[pdf_font][char.inner_fontname]
             define_chars[name] = {
                 width = char.width * bp_to_sp,
-                height = height,
+                height = char.height * bp_to_sp,
                 depth = 0,
                 -- "slot" indexes the VF's fonts table and prints the
                 -- corresponding character from the selected font.
@@ -553,7 +602,7 @@ if context then
                         char.codepoint,
                         char.unicode,
                         char.width * bp_to_sp,
-                        height,
+                        char.height * bp_to_sp,
                         char.char_obj,
                         id[pdf_name]
                     )
@@ -566,6 +615,18 @@ if context then
     load_font = memoized_table(function(pdf_font)
         return id[pdf_font]
     end)
+
+
+    function make_scaled_char(font_id, codepoint, scale)
+        -- Make the glyph
+        local glyph = node.new("glyph")
+        glyph.font = font_id
+        glyph.char = codepoint
+        glyph.xscale = 1000 * scale
+        glyph.yscale = 1000 * scale
+
+        return glyph
+    end
 end
 
 
@@ -591,13 +652,17 @@ local function print_char(fontname, char_name)
     local char = chars[fontname][char_name] or
                  chars[fontname][tostring(get_codepoint(char_name))]
 
-    -- Directly write the glyph node, without any help from TeX
+    -- Directly write the glyph node into TeX's current list
     if char and char.codepoint then
+        local char_nodes = make_scaled_char(
+            load_font(fontname),
+            char.codepoint,
+            tex.sp("1ex") / SCALE_FACTOR
+        )
+
+        -- Inject the nodes
         tex.forcehmode()
-        local glyph = node.new("glyph")
-        glyph.char = char.codepoint
-        glyph.font = load_font(fontname)
-        node.write(glyph)
+        node.write(char_nodes)
     end
 end
 

@@ -13,26 +13,55 @@
     {An as-of-yet unnamed emoji package}
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Generate needed variants %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%
+%% Generate variants %%
+%%%%%%%%%%%%%%%%%%%%%%%
 
+\cs_generate_variant:Nn \box_scale:Nnn { NVV }
+\cs_generate_variant:Nn \hbox_to_wd:nn { Vn }
 \cs_generate_variant:Nn \iow_now:Nn { NV }
+\cs_generate_variant:Nn \str_set:Nn { Ne }
 \cs_generate_variant:Nn \tl_put_left:Nn { Ne }
-\cs_generate_variant:Nn \str_remove_all:Nn { NV }
 
 
-%%%%%%%%%%%%%%%%%%%%%%%
-%% Declare variables %%
-%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%
+%% Declarations %%
+%%%%%%%%%%%%%%%%%%
 
-\prop_new:N \g__unemoji_fonts_prop
+% Constants
+\dim_const:Nn \c__unemoji_width_dim { 8.2696pt } % The average emoji width
+
+% Variables
 \cs_set_eq:NN \emoji@register \use_none:nn
+\prop_new:N \g__unemoji_fonts_prop
+
+
+%%%%%%%%%%%%%
+%% Scaling %%
+%%%%%%%%%%%%%
+
+% Scale the provided content to the current font size
+\cs_new_protected:Nn \__unemoji_scaled:n {
+    % Save the content to a box
+    \hbox_set:Nn \l_tmpa_box { #1 }
+
+    % Get the required scale factor
+    \tl_set:Ne \l_tmpa_tl {
+        \fp_to_decimal:n { round(1ex / 4.30554, 2) }
+    }
+
+    % Scale the box. Luckily, expl3 handles all the engine differences for us.
+    \box_scale:NVV \l_tmpa_box \l_tmpa_tl \l_tmpa_tl
+
+    % And now use it
+    \box_use_drop:N \l_tmpa_box
+}
 
 
 %%%%%%%%%%%%
 %% pdfTeX %%
 %%%%%%%%%%%%
+
 \sys_if_engine_pdftex:T {
     % Loads an emoji
     \cs_new_protected:Nn \__unemoji_load:nn {
@@ -40,7 +69,7 @@
         \pdfximage named { emoji #2 } { unnamed-emoji- #1 .pdf }
 
         % Save a reference to the object
-        \prop_put:cnV { g__unemoji_ #1 _prop } { #2 } \pdflastximage
+        \prop_gput:cnV { g__unemoji_ #1 _prop } { #2 } \pdflastximage
     }
 
     % Prints an emoji
@@ -59,7 +88,7 @@
             % Mark that we've used this emoji
             \seq_gput_right:cn { g__unemoji_ #1 _seq } { #2 }
             % and this font
-            \prop_put:NnV \g__unemoji_fonts_prop { #1 } \c_true_bool
+            \prop_gput:NnV \g__unemoji_fonts_prop { #1 } \c_true_bool
         }
     }
 
@@ -120,25 +149,28 @@
     % lot of code and has the same effect, but it's a much more elegant
     % solution.
     \lua_load_module:n { unnamed-emoji }
+
+    % We handle the scaling in Lua, so make the scaling function a no-op
+    \cs_set_eq:NN \__unemoji_scaled:n \use:n
 }
 
 
 %%%%%%%%%%%%%%%%%%%%%%
 %% XeTeX / dvipdfmx %%
 %%%%%%%%%%%%%%%%%%%%%%
+
 \cs_if_exist:NF \__unemoji_print:nn {
     % Prints an emoji
     \cs_new_protected:Nn \__unemoji_print:nn {
-        % We remove any spaces from the emoji name so that we can use it as a
-        % dvipdfm @reference.
-        \str_set:Nn \l_tmpa_str { #2 }
-        \str_remove_all:NV \l_tmpa_str \c_space_tl
+        % We need to hash the name since (x)dvipdfmx doesn't like special
+        % characters
+        \str_set:Ne \l_tmpa_str { \str_mdfive_hash:n { #2 } }
 
         % See if we've already loaded this emoji
         \prop_get:cVNTF { g__unemoji_ #1 _prop } \l_tmpa_str \l_tmpa_tl {
             % Dereference the XObject
-            \hbox_to_wd:nn
-                { 10bp } % No metrics with dvipdfmx, so we just guess 10bp
+            \hbox_to_wd:Vn
+                \c__unemoji_width_dim % No metrics with dvipdfmx
                 {
                     \special {
                         pdf:usexobj \c_space_tl % command
@@ -148,8 +180,10 @@
                 }
         }{
             % Otherwise, we simultaneously load and print the emoji
-            \hbox_to_wd:nn
-                { 10bp } % No metrics with dvipdfmx, so we just guess 10bp
+            \hbox_to_wd:Vn
+                % We can't get any metrics with dvipdfmx, so we just guess
+                % the emoji width.
+                \c__unemoji_width_dim
                 {
                     \special{
                         pdf:image \c_space_tl          % command
@@ -161,7 +195,7 @@
                 }
 
             % Mark that we've used this emoji
-            \prop_put:cVV { g__unemoji_ #1 _prop } \l_tmpa_str \c_true_bool
+            \prop_gput:cVV { g__unemoji_ #1 _prop } \l_tmpa_str \c_true_bool
         }
     }
 
@@ -174,7 +208,9 @@
 \cs_generate_variant:Nn \__unemoji_print:nn { ne }
 
 \NewDocumentCommand { \emoji } { O{noto-emoji} m } {
-    \__unemoji_print:ne { #1 } { \tl_trim_spaces:n { #2 } }
+    \__unemoji_scaled:n {
+        \__unemoji_print:ne { #1 } { \tl_trim_spaces:n { #2 } }
+    }
 }
 
 \endinput
