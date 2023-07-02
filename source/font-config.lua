@@ -41,7 +41,7 @@ local font = {
             return components
         end,
 
-        mp_scale = 0.069102923920223,
+        mp_scale = 5.7611340152279,
 
         licence = "Noto Emoji, Apache 2.0, GitHub:googlefonts/noto-emoji@934a5706."
     },
@@ -57,7 +57,7 @@ local font = {
             return components
         end,
 
-        mp_scale = 0.23034513512007,
+        mp_scale = 19.203951408981,
 
         licence = "Twitter Emoji, CC-BY 4.0, GitHub:twitter/twemoji@d94f4cf7."
     },
@@ -77,7 +77,7 @@ local font = {
             return components
         end,
 
-        mp_scale = 0.016690725419491,
+        mp_scale = 1.3915113934118,
 
         licence = "FxEmojis, CC-BY 4.0, GitHub:mozilla/fxemoji@270af343."
     },
@@ -93,7 +93,7 @@ local font = {
             return components
         end,
 
-        mp_scale = 0.14862871711128,
+        mp_scale = 12.391226148086,
 
         licence = "OpenMoji, CC-BY-SA 4.0, GitHub:hfg-gmuend/openmoji@d6d0daad."
     },
@@ -109,7 +109,7 @@ local font = {
             return components
         end,
 
-        mp_scale = 0.13678660479151,
+        mp_scale = 11.403945259996,
 
         licence = "EmojiOne, CC-BY 4.0, GitHub:joypixels/emojione@v2.2.7."
     },
@@ -138,7 +138,7 @@ local font = {
         end
     end,
 
-        mp_scale = 0.29615803086866,
+        mp_scale = 24.69079466869,
 
         keep_effects = true,
 
@@ -176,7 +176,7 @@ local font = {
             end
         end,
 
-        mp_scale = 0.29615803086866,
+        mp_scale = 24.69079466869,
 
         licence = "Fluent Emoji, MIT, GitHub:microsoft/fluentui-emoji@dfb5c3b7."
     },
@@ -192,7 +192,7 @@ local font = {
             return components
         end,
 
-        mp_scale = 0.065173101201993,
+        mp_scale = 5.4335033731158,
 
         licence = "Noto Emoji, Apache 2.0, GitHub:googlefonts/noto-emoji@8f0a65b1."
     },

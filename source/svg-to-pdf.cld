@@ -25,9 +25,9 @@
 -----------------
 local lfont = font -- LuaTeX font library
 
--- Weird scaling factor that makes the "page" fit the characters correctly
-local t3_scale <const> = tex.sp("10pt") / tex.sp("1bp") / 119.5
-local bp_to_sp <const> = tex.sp("1bp")
+-- Scaling factors
+local t3_scale <const> = 0.001 -- Standard PDF T3 scale
+local t3_to_sp <const> = t3_scale * tex.sp("10bp")
 
 -- Raw PDF "destination" dictionary
 local dest_formatter <const> =
@@ -48,6 +48,9 @@ local EMOJI_VAR <const> = 0xfe0f
 -- Modules
 local components_to_names = require "components-to-names"
 local font = require "font-config"
+
+-- Font size
+context.setupbodyfont { "10pt" }
 
 
 ---------------------------------
@@ -142,7 +145,7 @@ lpdf.registerfontmethod("rawpdf", function(filename, details)
         details.properties.indexdata[1], -- Table of glyphs
         t3_scale, -- Scale factor to export the glyph at
         function(char) -- Code to convert the character to PDF
-            return char.code, char.width / bp_to_sp
+            return char.code, char.width / t3_to_sp
         end,
         function() end, -- "Reset"
         function() end -- Add any used resources to the font dict
@@ -159,11 +162,11 @@ end)
 local function make_glyph(codepoint, unicode, width, height, code)
     -- Data for this glyph
     local spec <const> = {
-        width   = width,
-        height  = height,
+        width   = width * t3_to_sp,
+        height  = height * t3_to_sp,
         depth   = 0,
         unicode = { utf8.codepoint(unicode or "", 1, -1, true) },
-        code = (width / bp_to_sp) .. " 0 d0 " .. code,
+        code = width .. " 0 d0 " .. code,
     }
     -- Data for the original font
     local tfmdata <const> = fonts.hashes.identifiers[lfont.current()]
@@ -388,23 +391,17 @@ local function process(name)
         "svg" -- Name
     )
 
-    -- Clean up the PDF code
+    -- 3 digits of precision is plenty
     pdf_code = pdf_code
-        :gsub("(%d%.%d%d)%d%d%d", "%1") -- Reduce the precision
-        :gsub("(%d%.%d%d)%d%d", "%1")
-        :gsub("(%d%.%d%d)%d", "%1")
+        :gsub("(%D%d%.%d%d)%d*", "%1")
+        :gsub("(%D%d%d%.%d)%d*", "%1")
+        :gsub("(%d%d%d)%.%d*", "%1")
 
     -- Inject the licence data into each glyph
     pdf_code = glyph_licence(font.licence, pdf_code)
 
     -- Add the glyph to the font
-    make_glyph(
-        codepoint,
-        char,
-        width * bp_to_sp,
-        height * bp_to_sp,
-        pdf_code
-    )
+    make_glyph(codepoint, char, width, height, pdf_code)
 
     -- Add the named destinations
     make_name(char)
