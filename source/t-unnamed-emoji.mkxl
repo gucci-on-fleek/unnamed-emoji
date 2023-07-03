@@ -20,6 +20,7 @@
 \ctxloadluafile{unnamed-emoji}
 
 \tolerant\def\emoji[#1]#:#2{%
+    \dontleavehmode%
     \ifparameter#1\or%
         \unemoji_print{#1}{#2}%
     \or%

@@ -11,10 +11,11 @@
 
 \_newpublic\_def\emojifont{noto-emoji}
 
-\_optdef\emoji[emojifont]#1{%
+\_optdef\emoji[]#1{%
+    \_leavevmode%
     \.print{%
-        \_ifcsname\_the\_opt\_endcsname%
-            \_lastnamedcs%
+        \_istoksempty\_opt\_iftrue%
+            \emojifont%
         \_else%
             \_the\_opt%
         \_fi%

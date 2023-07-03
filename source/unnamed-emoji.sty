@@ -229,6 +229,7 @@
 \cs_generate_variant:Nn \__unemoji_print:nn { ee }
 
 \NewDocumentCommand { \emoji } { O{ default } m } {
+    \mode_leave_vertical:
     \__unemoji_scaled:n {
         \__unemoji_print:ee {
             \cs_if_exist_use:cF { g__unemoji_ #1 _font_tl } { #1 }
