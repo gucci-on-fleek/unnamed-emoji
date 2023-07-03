@@ -55,6 +55,11 @@ greater.
 and is licensed under the [_Apache License_, version
 2.0](https://github.com/googlefonts/noto-emoji/blob/934a5706/LICENSE).
 
+The flags in `noto-emoji.pdf` were derived from the `svg/` folder of
+[`fonttools/region-flags@0f2ae1a`](https://github.com/fonttools/region-flags/tree/0f2ae1a)
+and are all
+[exempt from copyright or in the public domain](https://github.com/fonttools/region-flags/blob/0f2ae1a/COPYING).
+
 ### `twemoji.pdf`
 
 `twemoji.pdf` (“Twitter Emoji”) was created from the `assets/svg/`

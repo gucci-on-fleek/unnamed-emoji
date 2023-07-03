@@ -61,8 +61,8 @@ It natively supports \pdfTeX{} and \LuaTeX{}, and (with a patch) supports
           and~\LuaMetaTeX{}.
 
     \item With a patched \type{dvipdfmx}, \unemoji/ directly supports \XeTeX{},
-          and supports Knuth's original \TeX{} and ($\varepsilon$-)(u)p\TeX{}
-          when processed with \type{dvipdfmx}.
+          and supports Knuth's original \TeX{}, ($\varepsilon$-)(u)p\TeX{}, and
+          most other \TeX{} engines when processed with \type{dvipdfmx}.
 
     \item \Unemoji/ only requires a single \acronym{PDF} file for each emoji
           font, without any external metadata files.
@@ -81,6 +81,9 @@ It natively supports \pdfTeX{} and \LuaTeX{}, and (with a patch) supports
 
     \item \Unemoji/ supports input by emoji name, codepoint, or by inserting
           the Unicode character directly.
+
+    \item All \unemoji/ characters automatically scale with the current font
+          size.
 \stopitemize
 
 \section{Loading}
@@ -155,7 +158,11 @@ character name:
 \stoplatex
 
 In theory, this would be the perfect input method; in practice, the Unicode
-character names are excessively verbose and often misleading.
+character names are excessively verbose and often misleading:
+
+\startlatex[]
+\emoji{black right-pointing triangle with double vertical bar}
+\stoplatex
 
 \subsection{Hexadecimal}
 
@@ -183,7 +190,7 @@ You can also enter the Unicode character directly:
 
 \subsection{\acronym{CLDR} Names}
 
-You can also use any unambiguous \acronym{CLDR} name:
+Finally, you can use any unambiguous \acronym{CLDR} name:
 
 \startlatex[]
 \emoji{corn}
@@ -197,6 +204,12 @@ You can also use any unambiguous \acronym{CLDR} name:
 
 \section{Sequence Names}
 
+\startbuffer[pre]
+\documentclass[border=1pt]{standalone}
+\usepackage[font=fluent-flat]{unnamed-emoji}
+\begin{document}
+\stopbuffer
+
 Many emoji are composed of multiple Unicode codepoints. \Unemoji/ has full
 support for these ligated/composed emoji sequences.
 
@@ -205,11 +218,11 @@ support for these ligated/composed emoji sequences.
 One option is to type the names of all components of the emoji, separated by
 spaces. Here, any \acronym{ZWJ} characters are omitted.
 
-\startlatex[]
+\startlatex[prebuffer=pre]
 \emoji{
     man
     emoji modifier fitzpatrick type-4
-    emoji component curly hair
+    emoji component red hair
 }
 \stoplatex
 
@@ -222,16 +235,35 @@ You can also hexadecimal codepoints of the emoji's
 components, separated by hyphens. For this option, any \acronym{ZWJ} characters
 \emph{must} be included.
 
-\startlatex[]
-\emoji{1f468-1f3fd-200d-1f9b1}
+\startlatex[prebuffer=pre]
+\emoji{1f468-1f3fd-200d-1f9b0}
 \stoplatex
 
 \subsection{\acronym{CLDR} Names}
 
 Easiest of all, you can use any unambiguous \acronym{CLDR} name:
 
+\startlatex[prebuffer=pre]
+\emoji{man: medium skin tone, red hair}
+\stoplatex
+
+\subsection{Unicode}
+
+Direct Unicode input works as expected too:
+
+\startlatex[prebuffer=pre]
+% Composed emoji can look funny in mono fonts
+\emoji{👨🏽‍🦰}
+\stoplatex
+
+\section{Font Sizes}
+
+All emoji automatically scale with their surrounding text, so changing the font
+size works as expected.
+
 \startlatex[]
-\emoji{man: medium skin tone, curly hair}
+    \tiny\emoji{🦆}  \small\emoji{🦆} \large\emoji{🦆}
+    \Large\emoji{🦆} \LARGE\emoji{🦆} \Huge\emoji{🦆}
 \stoplatex
 
 \section{Font Selection}
@@ -245,11 +277,12 @@ currently-supported font.
 \documentclass[border=1pt]{standalone}
 \usepackage{unnamed-emoji}
 \usepackage{array}
+\renewcommand*{\arraystretch}{2}
 \begin{document}
 \stopbuffer
 
 \startlatex[figureparams={width=0.29\textwidth}, prebuffer=pre]
-\begin{tabular}{>{\tiny\ttfamily}r@{\ }l}
+\begin{tabular}{>{\ttfamily}r@{\ }>{\huge}l}
     emojione &
     \emoji[emojione]{blowfish} \\
     %
@@ -276,10 +309,12 @@ currently-supported font.
 \subsection{Plain \TeX{}}
 \startbuffer[pre]
 \pdfhorigin=0in
-\pdfvorigin=0in
+\pdfvorigin=1ex
 \pdfpagewidth=1.2in
-\pdfpageheight=6\baselineskip
 \parindent=0pt
+\font\seventeenrm=cmr17
+\baselineskip=1.7\baselineskip
+\pdfpageheight=8\baselineskip
 \input unnamed-emoji
 \stopbuffer
 
@@ -293,7 +328,7 @@ currently-supported font.
     postbuffer=post,
     figureparams={width=0.29\textwidth}
 ]
-\halign{\hfil\tt#\unskip\ &#\hfil\cr
+\halign{\hfil\tt#\unskip\ &\seventeenrm#\hfil\cr
     emojione &
     \def\emojifont{emojione}
     \emoji{0x1f628} \cr
@@ -337,7 +372,7 @@ of the supported fonts.
 \begin{document}
     \emoji{girl}
     \emoji[openmoji]{girl}
-    \unemojisetup{font=emojione}
+    \unemojisetup{font=emojione}%
     \emoji{girl}
 \end{document}
 \stoplatex
@@ -350,7 +385,7 @@ of the supported fonts.
 \startTEXpage[offset=1pt]
     \emoji{girl}
     \emoji[openmoji]{girl}
-    \setupunemoji[font=emojione]
+    \setupunemoji[font=emojione]%
     \emoji{girl}
 \stopTEXpage
 \stoplatex
@@ -370,7 +405,7 @@ of the supported fonts.
 
 \emoji{girl}
 {\def\emojifont{openmoji}\emoji{girl}}
-\def\emojifont{emojione}
+\def\emojifont{emojione}%
 \emoji{girl}
 
 \bye
@@ -389,7 +424,7 @@ of the supported fonts.
 
 \emoji{girl}
 \emoji[openmoji]{girl}
-\def\emojifont{emojione}
+\def\emojifont{emojione}%
 \emoji{girl}
 
 \bye
@@ -419,6 +454,11 @@ of
 \goto{\tt googlefonts/noto-emoji@934a5706}[url(https://github.com/googlefonts/noto-emoji/tree/934a5706)]
 and is licensed under the
 \goto{{\em Apache License}, version 2.0}[url(https://github.com/googlefonts/noto-emoji/blob/934a5706/LICENSE)].
+
+The flags in \type{noto-emoji.pdf} were derived from the \type{svg/} folder of
+\goto{\tt fonttools/region-flags@0f2ae1a}[url(https://github.com/fonttools/region-flags/tree/0f2ae1a)]
+and are all
+\goto{exempt from copyright or in the public domain}[url(https://github.com/fonttools/region-flags/blob/0f2ae1a/COPYING)].
 
 \subsection{Tw\-emoji}
 

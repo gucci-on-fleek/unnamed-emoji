@@ -234,6 +234,9 @@ interfaces.implement {
     \setupbodyfont[tt,9.5pt]
     \addemojitofont{duck}
     \addemojitofont{swan}
+    \addemojitofont{0x1f468}
+    \addemojitofont{0x1f3fd}
+    \addemojitofont{0x1f9b0}
 \endgroup
 
 \protect
