@@ -549,7 +549,7 @@ if context then
             details.properties.indexdata[1], -- Table of glyphs
             t3_scale, -- Scale factor to export the glyph at
             function(char) -- Code to convert the character to PDF
-                return char.code, char.width / bp_to_sp
+                return char.code, char.width / bp_to_sp / t3_scale / 10
             end,
             function() end, -- "Reset"
             function() end -- Add any used resources to the font dict
@@ -684,7 +684,10 @@ if not context then
         function (mode, font_id, slot)
             if mode == 2 then -- Mode 2 wants the PDF stream
                 local char = fonts[font_id][slot]
-                return stream_object[char.char_obj], char.width
+                return
+                    stream_object[char.char_obj],
+                    char.width / 10 / t3_scale
+
             elseif mode == 3 then -- Mode 3 wants the font's overall scale factor
                 return t3_scale
             end
