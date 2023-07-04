@@ -664,6 +664,35 @@ local function print_char(fontname, char_name)
         -- Inject the nodes
         tex.forcehmode()
         node.write(char_nodes)
+    else
+        -- Add a black box to indicate that the character is missing
+        local rule = node.new("rule")
+        rule.height = tex.sp("2ex")
+        rule.width = tex.sp("1em")
+        rule.depth = 0
+
+        -- Show a "missing character" message on the console
+        local glyph = node.new("glyph")
+        glyph.font = 0
+        glyph.char = 0xFFFD
+        rule.next = glyph
+
+        local message = string.format(
+            'Missing character "%s" in font "%s"',
+            (char_name or "???"),
+            (fontname:match("unnamed%-emoji%-(.-)%.pdf$") or "???")
+        )
+
+        if luatexbase and luatexbase.module_warning then
+            luatexbase.module_warning("unnamed-emoji", message)
+        elseif context then
+            logs.reporter("unnamed-emoji", "warning")(message)
+        else
+            texio.write_nl("unnamed-emoji Warning: " .. message)
+        end
+
+        tex.forcehmode()
+        node.write(rule)
     end
 end
 
