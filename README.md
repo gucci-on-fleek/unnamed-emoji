@@ -28,17 +28,6 @@ for a full listing of fonts and characters.
 \end{document}
 ```
 
-## Patching `dvipdfmx`
-
-```sh
-git clone --depth 1 https://github.com/TeX-Live/texlive-source.git
-cd texlive-source
-git apply /path/to/unnamed-emoji/dvipdfmx.patch
-mkdir Work && cd Work
-../configure --disable-all-pkgs --enable-dvipdfm-x
-sudo cp -f texk/dvipdfm-x/xdvipdfmx "$(kpsewhich --var-value=SELFAUTOLOC)/xdvipdfmx"
-```
-
 ## Licence
 
 Most files should list their licence near the top. In general, the code
@@ -103,3 +92,11 @@ and is licensed under the [_MIT License_](https://github.com/microsoft/fluentui-
 [`googlefonts/noto-emoji@8f0a65b1`](https://github.com/googlefonts/noto-emoji/tree/8f0a65b1)
 and is licensed under the [_Apache License_, version
 2.0](https://github.com/googlefonts/noto-emoji/blob/8f0a65b1/LICENSE).
+
+### Unicode Data
+
+The names used for the emoji were taken from the
+`cldr-json/cldr-annotations-*modern/` folder of
+[`unicode-org/cldr-json@43.1.0`](https://github.com/unicode-org/cldr-json/tree/43.1.0)
+and are licensed under the
+[_Unicode Licence Agreement_](https://github.com/unicode-org/cldr-json/blob/43.1.0/LICENSE)

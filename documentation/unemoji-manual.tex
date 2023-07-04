@@ -216,7 +216,7 @@ support for these ligated/composed emoji sequences.
 \subsection{Name}
 
 One option is to type the names of all components of the emoji, separated by
-spaces. Here, any \acronym{ZWJ} characters are omitted.
+spaces. Here, any \acronym{ZWJ}\footnote{Zero-width joiner, \type{U+200D}} characters are omitted.
 
 \startlatex[prebuffer=pre]
 \emoji{
@@ -226,8 +226,8 @@ spaces. Here, any \acronym{ZWJ} characters are omitted.
 }
 \stoplatex
 
-These names tend to be very long, so you'll probably want to use the other
-options.
+These names tend to be \emph{very} long, so you'll probably want to use the
+other options.
 
 \subsection{Hexadecimal}
 
@@ -359,10 +359,14 @@ currently-supported font.
 }
 \stoplatex
 
+\penalty-4000
+
 \section{Default Font}
 
 \Unemoji/ defaults to using \italic{Noto Emoji}, but you can change this to any
-of the supported fonts.
+of the supported fonts:
+
+\page[no, disable]
 
 \subsection{\LaTeX{}}
 \startlatex[prebuffer=,]
@@ -430,7 +434,7 @@ of the supported fonts.
 \bye
 \stoplatex
 
-\section{Available Characters}
+\section{Available Emoji}
 
 To view the full list of characters, fonts, and names available with \unemoji/,
 please consult the font specimens (links:
@@ -438,7 +442,40 @@ please consult the font specimens (links:
 \acronym{CTAN} (not yet\dots),
 \goto{GitHub}[url(https://github.com/gucci-on-fleek/unnamed-emoji/releases/latest/download/unnamed-emoji-specimens.pdf)]).
 
-\section{Nonexistent Characters}
+\section{Emoji Appearances}
+
+\Unemoji/ does not modify emoji from their upstream sources; however, due to
+technical reasons some characters may appear incorrect. There are generally two
+reasons why emoji may appear incorrect:
+
+\subsection{Special Effects}
+
+\acronym{PDF} files can easily include transparency and gradients; however, each
+unique transparency or gradient (shading) adds a new \q{object} to the
+\acronym{PDF}. Some emoji sources contain 15+ different transparencies and
+gradients, meaning that this emoji would require at least 20 objects\footnote{1
+for the page, 1 for the character, 3 for the named destinations, and 15 for the
+transparencies/gradients}.
+
+For smaller files, this isn't a problem; however, the largest font file in
+\unemoji/ contains almost 4\,000 characters and 26\,000 objects, \emph{without}
+any special effects. Adding in these special effects, we'd need upwards of
+90\,000 objects. Generally, \acronym{PDF} performance scales superlinearly with
+the object count, making retaining the original transparencies and gradients
+untenable.
+
+\subsection{Bugs}
+
+\Unemoji/ uses \ConTeXt{} to convert the \acronym{SVG} sources into
+\MetaPostLogo{}, which it then renders into raw \acronym{PDF} drawing commands.
+This works impressively well, but sometimes something goes wrong. Most
+characters are fine, but with 17\,922 characters, I simply cannot check them
+all.
+
+If any of these characters are important to you, please open an issue on
+\goto{GitHub}[url(projecturl)].
+
+\section{Nonexistent Emoji}
 
 \Unemoji/'s behaviour when including a nonexistent character depends on the
 engine in use.
@@ -466,7 +503,8 @@ xdvipdfmx:fatal: Image inclusion failed for
 \subsection{\LuaTeX{}}
 
 If you include a nonexistent character with \LuaTeX{}, the character will be
-replaced with a black box, and you will get the following warnings:
+replaced with a black box \vrule width 1em height 2ex depth 0pt\relax, and you
+will get the following warnings:
 
 \starttyping[escape={$,$}]
 Module unnamed-emoji Warning: Missing character "$\meta{character name}$"
@@ -475,7 +513,7 @@ Module unnamed-emoji Warning: Missing character "$\meta{character name}$"
 Missing character: There is no <?> (U+FFFD) in font nullfont!
 \stoptyping
 
-You can turn this into a fatal error with the standard:
+You can turn this into a fatal error by setting the standard \TeX{} parameter:
 
 \startTEX
 \tracinglostchars=3
@@ -550,6 +588,90 @@ of
 and is licensed under the
 \goto{{\em Apache License}, version 2.0}[url(https://github.com/googlefonts/noto-emoji/blob/8f0a65b1/LICENSE)].
 
+\subsection{Unicode Data}
+
+The names used for the emoji were taken from the
+{\tt cldr-json/cldr-annotations-*modern/} folder of
+\goto{\tt unicode-org/cldr-json@43.1.0}[url(https://github.com/unicode-org/cldr-json/tree/43.1.0)]
+and are licensed under the
+\goto{\em Unicode Licence Agreement}[url(https://github.com/unicode-org/cldr-json/blob/43.1.0/LICENSE)].
+
+\section{Developer Notes}
+
+Below follows some helpful notes for building \unemoji/. This is primarily of
+interest to developers; most users need not read further.
+
+\subsection{Patching \type{dvipdfmx}}
+
+\starttyping
+git clone --depth 1 https://github.com/TeX-Live/texlive-source.git
+
+cd texlive-source
+
+curl -L \
+    github.com/gucci-on-fleek/unnamed-emoji/raw/@/dvipdfmx.patch |
+    git apply -
+
+mkdir Work && cd Work
+
+../configure --disable-all-pkgs --enable-dvipdfm-x
+
+sudo cp -f texk/dvipdfm-x/xdvipdfmx \
+           "$(kpsewhich --var-value=SELFAUTOLOC)/xdvipdfmx"
+\stoptyping\iffalse$\fi
+
+\subsection{Building}
+
+\starttyping
+# Clone the repository
+git clone --depth 1 https://github.com/gucci-on-fleek/unnamed-emoji
+
+# Patch ConTeXt, only needed once
+sudo make patch-context && context --make
+
+# Download the font sources, only needed once
+make submodules
+
+# Add the flags to Noto Emoji, optional
+make noto-flags
+
+# Build the fonts
+make -Bj16 fonts  # add qpdf=echo for the fast version
+
+# Build the font specimens
+make -B specimens  # add qpdf=echo for the fast version
+
+# Update the file versions, optional
+make update-version version='9.9.9'
+
+# Build the manual
+make manual
+
+# Bundle all the files for release
+make bundle
+\stoptyping
+
+\subsection{Policies}
+
+\Unemoji/ will include any emoji font that can be distributed in \TeX{}~Live. I
+believe that the 7 currently-included fonts are the only ones available, but I
+will add any more should I find them.
+
+\Unemoji/ does not and will not modify or add any characters to the fonts it
+distributes, aside from technically-necessary changes such as removing
+gradients.
+
+As far as I am aware, \unemoji/ supports all currently-used formats and engines.
+Any new features or bug fixes should support all of them where possible.
+
+\Unemoji/ does not and will not use any external data files. This is sometimes
+limitting, but it is the core justification for making yet another \LaTeX{}
+emoji package.
+
+\blank[quarterline]
+\noindent \italic{(These are all just rough guidelines that I try to follow,
+nothing is set in stone.)}
+
 \page
 \setuplayout[
     width=middle,
@@ -559,7 +681,6 @@ and is licensed under the
 \section[sec:implementation]{Implementation}
 
 From here and until the end of this manual is the raw source code of \unemoji/.
-This is primarily of interest to developers; most users need not read further.
 
 If want to offer any improvements to the code below, please open an issue or a
 \acronym{PR} on \goto{GitHub}[url(projecturl)].
@@ -574,33 +695,81 @@ If want to offer any improvements to the code below, please open an issue or a
 ]
 
 \subsection{svg-to-pdf.cld}
+
+This is the main file that we use to convert the \acronym{SVG} sources into a
+\acronym{PDF} ready to be included by \pdfTeX{} or \LuaTeX{}. This file is
+\emph{filled} with questionable hacks, so please don't take this as an example
+of good \ConTeXt{} code.
+
+Lots of this code uses non-public interfaces that may change at any time, but
+this is mostly okay since it's unlikely that anyone but me will ever need to run
+this.
+
 \typeLUAfile{../source/svg-to-pdf.cld}
 
 \subsection{font-config.lua}
+
+Here is where we store all of the font-specific code. This way, everything else
+is kept font-agnostic.
+
 \typeLUAfile{../source/font-config.lua}
 
 \subsection{components-to-names.lua}
+
+Here is where we convert a character to all of its possible names. This is much
+more challenging than it sounds since we need to support quite a few input
+formats.
+
 \typeLUAfile{../source/components-to-names.lua}
 
 \subsection{unnamed-emoji.sty}
+
+\LaTeX{} support code.
+
 \typeTEXfile{../source/unnamed-emoji.sty}
 
 \subsection{unnamed-emoji.tex}
+
+Plain~\TeX{} support code.
+
 \typeTEXfile{../source/unnamed-emoji.tex}
 
 \subsection{unnamed-emoji.opm}
+
+\OpTeX{} support code.
+
 \typeTEXfile{../source/unnamed-emoji.opm}
 
 \subsection{t-unnamed-emoji.mkxl}
+
+\ConTeXt{} support code. We only support \acronym{LMTX}/Mk\acronym{XL} since
+that's what most users use, but adding Mk\acronym{IV} support would certainly be
+possible.
+
 \typeTEXfile{../source/t-unnamed-emoji.mkxl}
 
 \subsection{unnamed-emoji.lua}
+
+The runtime support code for \LuaTeX{}-based engines and formats. Unlike {\tt
+svg-to-pdf.cld}, the code here \emph{will} be ran by end users, so we only uses
+supported interfaces here (although many of them are unforunately undocumented).
+
 \typeLUAfile{../source/unnamed-emoji.lua}
 
 \subsection{unemoji-specimens.cld}
+
+The \ConTeXt{} file used to generate the font specimens.
+
 \typeLUAfile{../documentation/unemoji-specimens.cld}
 
 \subsection{dvipdfmx.patch}
+
+The C-language patch to the \type{dvipdfmx} source.
+
 \typefile{../dvipdfmx.patch}
 
+\vfill\penalty10000
+\startalignment[flushright]
+    \tfa\meta{End of manual}
+\stopalignment
 \stopdocument
