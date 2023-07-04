@@ -158,7 +158,7 @@ character name:
 \stoplatex
 
 In theory, this would be the perfect input method; in practice, the Unicode
-character names are excessively verbose and often misleading:
+character names are excessively verbose:
 
 \startlatex[]
 \emoji{black right-pointing triangle with double vertical bar}
@@ -438,6 +438,49 @@ please consult the font specimens (links:
 \acronym{CTAN} (not yet\dots),
 \goto{GitHub}[url(https://github.com/gucci-on-fleek/unnamed-emoji/releases/latest/download/unnamed-emoji-specimens.pdf)]).
 
+\section{Nonexistent Characters}
+
+\Unemoji/'s behaviour when including a nonexistent character depends on the
+engine in use.
+
+\subsection{\pdfTeX{}}
+
+If you include a nonexistent character with \pdfTeX{}, no \acronym{PDF} will
+be produced, and you will get the following error:
+
+\starttyping[escape={$,$}]
+!pdfTeX error: pdflatex (file $\meta{font file path}$): PDF inclusion:
+               invalid destination <$\meta{character name}$>
+\stoptyping
+
+\subsection{\XeTeX{}/\allowbreak\type{dvipdfmx}\phantom{/}}
+
+If you include a nonexistent character with \XeTeX{}/\type{dvipdfmx}, no
+\acronym{PDF} will be produced, and you will get the following error:
+
+\starttyping[escape={$,$}]
+xdvipdfmx:fatal: Image inclusion failed for
+                 "unnamed-emoji-$\meta{font name}$.pdf" (page=$\meta{page}$).
+\stoptyping
+
+\subsection{\LuaTeX{}}
+
+If you include a nonexistent character with \LuaTeX{}, the character will be
+replaced with a black box, and you will get the following warnings:
+
+\starttyping[escape={$,$}]
+Module unnamed-emoji Warning: Missing character "$\meta{character name}$"
+                     in font "$\meta{font name}$" on input line $\meta{line}$.
+
+Missing character: There is no <?> (U+FFFD) in font nullfont!
+\stoptyping
+
+You can turn this into a fatal error with the standard:
+
+\startTEX
+\tracinglostchars=3
+\stopTEX
+
 \section{Licence}
 \setupinteraction[style=\tf]
 
@@ -455,7 +498,7 @@ of
 and is licensed under the
 \goto{{\em Apache License}, version 2.0}[url(https://github.com/googlefonts/noto-emoji/blob/934a5706/LICENSE)].
 
-The flags in \type{noto-emoji.pdf} were derived from the \type{svg/} folder of
+The flags in \type{noto-emoji.pdf} were created from the \type{svg/} folder of
 \goto{\tt fonttools/region-flags@0f2ae1a}[url(https://github.com/fonttools/region-flags/tree/0f2ae1a)]
 and are all
 \goto{exempt from copyright or in the public domain}[url(https://github.com/fonttools/region-flags/blob/0f2ae1a/COPYING)].
