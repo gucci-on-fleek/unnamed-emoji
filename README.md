@@ -16,6 +16,8 @@ for complete usage details or the
 [font specimens](https://github.com/gucci-on-fleek/unnamed-emoji/releases/latest/download/unnamed-emoji-specimens.pdf)
 for a full listing of fonts and characters.
 
+[Download the latest release (TDS `.zip` archive)](https://github.com/gucci-on-fleek/unnamed-emoji/releases/latest/download/unnamed-emoji.tds.zip)
+
 ## Example
 
 ```latex
