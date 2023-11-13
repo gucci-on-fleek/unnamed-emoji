@@ -241,11 +241,26 @@ if not font.keep_effects then utilities.sequencers.prependaction(
                 end
             end
 
-            -- Add the average value as a solid fill/outline
-            local values <const> = colour_tuple(
-                average(rs), average(gs), average(bs)
-            )
-            before[2] = fill_draw_colour(values, values)
+            -- If all the colours are identical, then there's probably a
+            -- `stop-opacity` somewhere, so we'll just discard it.
+            local all_equal = true
+            for i = 1, #rs do
+                if rs[i] ~= rs[1] or gs[i] ~= gs[1] or bs[i] ~= bs[1] then
+                    all_equal = false
+                    break
+                end
+            end
+
+            if all_equal then
+                before[1] = "\n%"
+                after[2] = "\n"
+            else
+                -- Add the average value as a solid fill/outline
+                local values <const> = colour_tuple(
+                    average(rs), average(gs), average(bs)
+                )
+                before[2] = fill_draw_colour(values, values)
+            end
         end
     end
 ) end
