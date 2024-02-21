@@ -90,12 +90,18 @@
         \pdfximage named { emoji #2 } { unnamed-emoji- #1 .pdf }
 
         % Save a reference to the object
+        \prop_if_exist:cF { g__unemoji_ #1 _prop } {
+            \prop_new:c { g__unemoji_ #1 _prop }
+        }
         \prop_gput:cnV { g__unemoji_ #1 _prop } { #2 } \pdflastximage
     }
 
     % Prints an emoji
     \cs_new_protected:Nn \__unemoji_print:nn {
         % See if we've already loaded this emoji
+        \prop_if_exist:cF { g__unemoji_ #1 _prop } {
+            \prop_new:c { g__unemoji_ #1 _prop }
+        }
         \prop_get:cnNTF { g__unemoji_ #1 _prop } { #2 } \l_tmpa_tl {
             % If we've already loaded it, just dereference the XObject
             \pdfrefximage \l_tmpa_tl \scan_stop:
@@ -188,6 +194,10 @@
         \str_set:Ne \l_tmpa_str { \str_mdfive_hash:n { #2 } }
 
         % See if we've already loaded this emoji
+        \prop_if_exist:cF { g__unemoji_ #1 _prop } {
+            \prop_new:c { g__unemoji_ #1 _prop }
+        }
+
         \prop_get:cVNTF { g__unemoji_ #1 _prop } \l_tmpa_str \l_tmpa_tl {
             % Dereference the XObject
             \hbox_to_wd:Vn
