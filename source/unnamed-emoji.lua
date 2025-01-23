@@ -495,6 +495,7 @@ local load_font = memoized_table(function(pdf_font)
     -- Make the VF metadata for all characters
     local define_chars = {}
     for name, char in pairs(chars[pdf_font]) do
+        local name = name
         name = tonumber(name, 10)
         if name then
             local id = fonts[pdf_font][char.inner_fontname]
