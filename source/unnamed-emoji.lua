@@ -190,6 +190,9 @@ local function array_pairs(array)
         end
 
         local pdf_type, value, encoded = getfromarray(array, index)
+        if context then
+            encoded = encoded & 0x1 ~= 0
+        end
 
         -- If we have a hex-encoded string, we need to manually decode it
         -- since the built-in decoder fails sometimes.
@@ -230,7 +233,7 @@ local function get_dests(document)
                 for _, dest in array_pairs(dests.Names) do
                     if type(dest) == "string" then
                         -- Push the character name
-                        char_name = dest:match("emoji(.*)$")
+                        char_name = dest:match("emoji(.*)$") or dest
                     else
                         -- Send the name and destination out to the caller
                         yield(char_name, dest)
@@ -656,10 +659,18 @@ local function print_char(fontname, char_name)
 
     -- Directly write the glyph node into TeX's current list
     if char and char.codepoint then
+        local exheight
+        if context then
+            local scale = select(1, tex.getglyphscales())
+            exheight = tex.sp("1ex") * scale / 1000
+        else
+            exheight = tex.sp("1ex")
+        end
+
         local char_nodes = make_scaled_char(
             load_font(fontname),
             char.codepoint,
-            tex.sp("1ex") / SCALE_FACTOR
+            exheight / SCALE_FACTOR
         )
 
         -- Inject the nodes
