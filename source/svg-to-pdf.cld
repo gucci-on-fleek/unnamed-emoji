@@ -397,14 +397,24 @@ local function process(name)
         mp_code = table.concat(mp_code, "\n")
     end
 
+    if mp_code:match("svgstart") then
+        print("Render failed, skipping:", name) -- TODO!
+        return
+    end
+
     -- Render the Metafun image to PDF
-    local pdf_code, width, height = metapost.simple(
+    local ok, pdf_code, width, height = xpcall(metapost.simple, debug.traceback,
         "metafun", -- "Instance"
         mp_code, -- MP code
         true, -- Use Metafun extensions?
         false, -- Wrap in begfig/endfig?
         "svg" -- Name
     )
+
+    if not ok then
+        print("Render failed, skipping:", name) -- TODO!
+        return
+    end
 
     -- 3 digits of precision is plenty
     pdf_code = pdf_code
