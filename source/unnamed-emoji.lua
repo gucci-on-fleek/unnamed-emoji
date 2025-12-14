@@ -226,20 +226,37 @@ local function get_dests(document)
     -- A coroutine is *way* easier than implementing this by hand
     return coroutine.wrap(function()
         -- Outer Kids array
-        for i, dests in array_pairs(document.Catalog.Names.Dests.Kids) do
-            -- Inner Kids array
+        local dests = document.Catalog.Names.Dests
+        if dests.Kids then
             for i, dests in array_pairs(dests.Kids) do
-                local char_name = ""
-                for _, dest in array_pairs(dests.Names) do
-                    if type(dest) == "string" then
-                        -- Push the character name
-                        char_name = dest:match("emoji(.*)$") or dest
-                    else
-                        -- Send the name and destination out to the caller
-                        yield(char_name, dest)
+                -- Inner Kids array
+                for i, dests in array_pairs(dests.Kids) do
+                    local char_name = ""
+                    for _, dest in array_pairs(dests.Names) do
+                        if type(dest) == "string" then
+                            -- Push the character name
+                            char_name = dest:match("emoji(.*)$") or dest
+                        else
+                            -- Send the name and destination out to the caller
+                            yield(char_name, dest)
+                        end
                     end
                 end
             end
+        elseif dests.Names then
+            -- Single Names array
+            local char_name = ""
+            for _, dest in array_pairs(dests.Names) do
+                if type(dest) == "string" then
+                    -- Push the character name
+                    char_name = dest:match("emoji(.*)$") or dest
+                else
+                    -- Send the name and destination out to the caller
+                    yield(char_name, dest)
+                end
+            end
+        else
+            error("No named destinations found in PDF!")
         end
     end)
 end
