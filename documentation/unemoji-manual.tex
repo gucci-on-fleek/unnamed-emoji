@@ -33,7 +33,7 @@
 ]
 
 \Unemoji/ is an emoji package for \LaTeX{}, \ConTeXt{}, Plain~\TeX{}, and OpTeX.
-It natively supports \pdfTeX{} and \LuaTeX{}, and (with a patch) supports
+It natively supports \pdfTeX{} and \LuaTeX{}, and supports
 \XeTeX{} and any other \TeX{} engine using \type{dvipdfmx}.
 
 \section{Quick Start}
@@ -60,7 +60,7 @@ It natively supports \pdfTeX{} and \LuaTeX{}, and (with a patch) supports
     \item \Unemoji/ has native support for the engines \pdfTeX{}, \LuaTeX{},
           and~\LuaMetaTeX{}.
 
-    \item With a patched \type{dvipdfmx}, \unemoji/ directly supports \XeTeX{},
+    \item With \type{dvipdfmx}, \unemoji/ directly supports \XeTeX{},
           and supports Knuth's original \TeX{}, ($\varepsilon$-)(u)p\TeX{}, and
           most other \TeX{} engines when processed with \type{dvipdfmx}.
 
@@ -761,12 +761,6 @@ supported interfaces here (although many of them are unforunately undocumented).
 The \ConTeXt{} file used to generate the font specimens.
 
 \typeLUAfile{../documentation/unemoji-specimens.cld}
-
-\subsection{dvipdfmx.patch}
-
-The C-language patch to the \type{dvipdfmx} source.
-
-\typefile{../dvipdfmx.patch}
 
 \vfill\penalty10000
 \startalignment[flushright]
