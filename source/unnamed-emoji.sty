@@ -35,6 +35,9 @@
 \cs_set_eq:NN \emoji@register \use_none:nn
 \prop_new:N \g__unemoji_fonts_prop
 
+% Needed for \sys_if_output_pdf_p:
+\sys_ensure_backend:
+
 
 %%%%%%%%%%
 %% Keys %%
@@ -56,6 +59,7 @@
 \NewDocumentCommand \unemojisetup { m } {
     \keys_set:nn { unemoji } { #1 }
 }
+
 
 %%%%%%%%%%%%%
 %% Scaling %%
@@ -83,7 +87,7 @@
 %% pdfTeX %%
 %%%%%%%%%%%%
 
-\sys_if_engine_pdftex:T {
+\bool_lazy_and:nnT { \sys_if_engine_pdftex_p: } { \sys_if_output_pdf_p: } {
     % Loads an emoji
     \cs_new_protected:Nn \__unemoji_load:nn {
         % Load the page into an XForms Object
@@ -166,7 +170,7 @@
 %% LuaTeX %%
 %%%%%%%%%%%%
 
-\sys_if_engine_luatex:T {
+\bool_lazy_and:nnT { \sys_if_engine_luatex_p: } { \sys_if_output_pdf_p: } {
     % LuaTeX needs us to use "\pdfextension glyphtounicode" before any font will
     % generate a proper /ToUnicode mapping.
     \pdfextension glyphtounicode {fake!} {0000}
